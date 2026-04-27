@@ -7,25 +7,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0A0F0A',
-        surface: '#0D1F0D',
+        background: '#F4F7F6',
+        surface: '#FFFFFF',
         primary: {
-          green: '#22C55E',
-          secondary: '#16A34A',
+          green: '#10B981',
+          secondary: '#059669',
+          light: '#D1FAE5', // cute pastel green
         },
-        accent: {
-          teal: '#2DD4BF',
-          lime: '#A3E635',
+        pastel: {
+          green: '#D1FAE5',
+          orange: '#FFEDD5',
+          blue: '#DBEAFE',
+          purple: '#EDE9FE',
         },
         text: {
-          primary: '#F0FDF4',
-          secondary: '#86EFAC',
-          muted: 'rgba(74, 222, 128, 0.5)',
+          primary: '#111827',
+          secondary: '#4B5563',
+          muted: '#9CA3AF',
         },
         status: {
           pending: '#F59E0B',
           progress: '#3B82F6',
-          resolved: '#22C55E',
+          resolved: '#10B981',
           rejected: '#EF4444',
         }
       },

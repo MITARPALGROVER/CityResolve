@@ -1,47 +1,39 @@
 import React from 'react';
-import { GlassCard } from '../ui/GlassCard';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 
 interface StatCardProps {
     title: string;
     value: string | number;
     icon: React.ReactNode;
-    iconBgColor: string;
+    bgClass: string;
+    iconBgClass?: string;
     trend?: {
         value: number; // percentage
         isPositive: boolean;
     };
 }
 
-export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, iconBgColor, trend }) => {
+export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, bgClass, iconBgClass, trend }) => {
     return (
-        <GlassCard hoverEffect className="p-6 relative group">
-            <div className="flex items-start justify-between">
-                <div className="space-y-4">
-                    <p className="text-sm font-medium text-text-muted">{title}</p>
-                    <div className="flex items-end gap-3">
-                        <h4 className="text-4xl font-bold text-text-primary tracking-tight">{value}</h4>
-                        {trend && (
-                            <div className={`flex items-center gap-1 text-sm pb-1 font-medium ${trend.isPositive ? 'text-primary-green' : 'text-status-rejected'}`}>
-                                {trend.isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                <span>{trend.value}%</span>
-                            </div>
-                        )}
-                        {!trend && (
-                            <div className="flex items-center gap-1 text-sm pb-1 font-medium text-text-muted">
-                                <Minus size={14} />
-                                <span>0%</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white ${iconBgColor} shadow-lg shadow-black/20 group-hover:scale-110 transition-transform`}>
-                    {icon}
-                </div>
+        <div className={`p-6 rounded-[24px] transition-all duration-300 hover:-translate-y-1 hover:shadow-md flex items-center gap-5 ${bgClass}`}>
+            <div className={`w-[60px] h-[60px] rounded-[18px] flex items-center justify-center flex-shrink-0 text-white shadow-sm ${iconBgClass || 'bg-white/40'}`}>
+                {icon}
             </div>
-
-            {/* Decorative gradient blur that appears on hover */}
-            <div className="absolute inset-0 bg-primary-green/5 blur-xl rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-        </GlassCard>
+            <div className="flex flex-col flex-1">
+                <h4 className="text-[32px] font-bold tracking-tight text-gray-900 leading-none mb-1">{value}</h4>
+                <p className="text-[15px] font-medium text-gray-700 leading-tight w-24">{title}</p>
+                {trend && (
+                    <div className="flex items-center gap-2 mt-3">
+                        <svg width="48" height="12" viewBox="0 0 48 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 10C5.5 10 7.5 4 12 4C16.5 4 19.5 8 24 8C28.5 8 32 2 37 2C42 2 44.5 6 46 6" stroke={trend.isPositive ? "#10B981" : "#F59E0B"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <div className={`flex items-center gap-0.5 text-xs font-bold ${trend.isPositive ? 'text-green-600' : 'text-orange-500'}`}>
+                           <ArrowUpRight size={14} strokeWidth={3} />
+                           {trend.value}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 };

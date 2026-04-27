@@ -22,8 +22,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     ];
 
     const sidebarClasses = `
-    fixed inset-y-0 left-0 w-[260px] bg-surface/90 backdrop-blur-xl border-r border-primary-green/10
-    transform transition-transform duration-300 z-40 ease-in-out flex flex-col pt-24 pb-6
+    fixed inset-y-0 left-0 w-[260px] bg-surface border-r border-gray-200
+    transform transition-transform duration-300 z-40 ease-in-out flex flex-col pt-20 pb-6
     ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
   `;
 
@@ -39,13 +39,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
             <aside className={sidebarClasses}>
                 <div className="px-4 flex justify-end lg:hidden mb-4">
-                    <button onClick={onClose} className="p-2 text-text-muted hover:text-white rounded-full bg-white/5">
+                    <button onClick={onClose} className="p-2 text-text-muted hover:text-text-primary rounded-full bg-gray-100">
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-                    <p className="px-4 text-xs font-semibold text-text-muted uppercase tracking-wider mb-4 mt-2">Menu</p>
+                <div className="flex-1 px-3 space-y-2 overflow-y-auto custom-scrollbar">
                     {navItems.map((item) => (
                         <NavLink
                             key={item.name}
@@ -54,8 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                             className={({ isActive }) => `
                 flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
                 ${isActive
-                                    ? 'bg-primary-green/10 text-white border-l-4 border-primary-green font-medium'
-                                    : 'text-white/60 hover:text-white hover:bg-primary-green/5 border-l-4 border-transparent'}
+                                    ? 'bg-primary-light text-primary-dark font-medium'
+                                    : 'text-text-secondary hover:text-text-primary hover:bg-gray-100'}
               `}
                         >
                             {item.icon}
@@ -65,12 +64,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="px-3 mt-auto space-y-1">
-                    <div className="h-px bg-white/5 mx-4 my-2" />
+                    <div className="h-px bg-gray-200 mx-4 my-4" />
                     {bottomItems.map((item) => (
                         <NavLink
                             key={item.name}
                             to={item.path}
-                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/50 hover:text-white hover:bg-white/5 transition-colors duration-200"
+                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-gray-100 transition-colors duration-200"
                         >
                             {item.icon}
                             <span>{item.name}</span>

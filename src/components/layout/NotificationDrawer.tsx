@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { X, Bell } from 'lucide-react';
 import { IssueStatus } from '../ui/StatusBadge';
 
 interface Notification {
@@ -15,18 +15,12 @@ interface NotificationDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   notifications: Notification[];
+  onNotificationClick?: (id: string) => void;
+  onMarkAllRead?: () => void;
 }
 
-export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose, notifications }) => {
-  const getIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'resolved': return <CheckCircle size={16} className="text-status-resolved" />;
-      case 'rejected': return <X size={16} className="text-status-rejected" />;
-      case 'pending': return <AlertTriangle size={16} className="text-status-pending" />;
-      case 'inprogress': return <Info size={16} className="text-status-progress" />;
-      default: return <Info size={16} className="text-primary-green" />;
-    }
-  };
+export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose, notifications, onNotificationClick, onMarkAllRead }) => {
+
 
   const getColor = (type: Notification['type']) => {
     switch (type) {
@@ -41,22 +35,22 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
   return (
     <>
       {isOpen && (
-         <div className="fixed inset-0 bg-background/40 backdrop-blur-sm z-50 transition-opacity" onClick={onClose} />
+         <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm z-50 transition-opacity" onClick={onClose} />
       )}
       
       <div 
-        className={`fixed inset-y-0 right-0 w-full sm:w-[380px] bg-[#0A0F0A]/92 backdrop-blur-[32px] border-l border-white/10 z-50 shadow-2xl transform transition-transform duration-350 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] flex flex-col
+        className={`fixed inset-y-0 right-0 w-full sm:w-[380px] bg-white/95 backdrop-blur-[32px] border-l border-gray-200 z-50 shadow-2xl transform transition-transform duration-350 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] flex flex-col
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
             <h2 className="text-xl font-bold text-text-primary">Notifications</h2>
             <p className="text-sm text-text-muted mt-1">You have {notifications.filter(n => !n.read).length} unread messages</p>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/10 text-text-muted hover:text-white transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 text-text-muted hover:text-gray-900 transition-colors"
           >
             <X size={20} />
           </button>
@@ -74,8 +68,9 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
               {notifications.map((notif) => (
                 <div 
                   key={notif.id}
-                  className={`relative p-4 rounded-xl transition-colors hover:bg-white/5 flex gap-4 cursor-pointer
-                    ${!notif.read ? 'bg-white/[0.03]' : 'opacity-70'}
+                  onClick={() => onNotificationClick?.(notif.id)}
+                  className={`relative p-4 rounded-xl transition-colors hover:bg-gray-50 flex gap-4 cursor-pointer
+                    ${!notif.read ? 'bg-primary-light/30' : 'opacity-80'}
                   `}
                 >
                   {/* Unread indicator */}
@@ -88,7 +83,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
                   </div>
                   
                   <div className="flex-1">
-                    <h4 className={`text-sm ${!notif.read ? 'text-white font-medium' : 'text-text-secondary'}`}>
+                    <h4 className={`text-sm ${!notif.read ? 'text-gray-900 font-bold' : 'text-text-secondary font-medium'}`}>
                       {notif.title}
                     </h4>
                     <p className="text-xs text-text-muted mt-1 leading-relaxed">
@@ -106,8 +101,11 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
         
         {/* Footer */}
         {notifications.length > 0 && (
-          <div className="p-4 border-t border-white/5">
-            <button className="w-full text-sm font-medium text-primary-green hover:text-accent-teal transition-colors py-2">
+          <div className="p-4 border-t border-gray-100">
+            <button
+              onClick={onMarkAllRead}
+              className="w-full text-sm font-medium text-primary-dark hover:text-primary-green transition-colors py-2"
+            >
               Mark all as read
             </button>
           </div>
@@ -116,6 +114,3 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
     </>
   );
 };
-
-// Temp import for empty state
-import { Bell } from 'lucide-react';

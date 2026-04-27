@@ -1,5 +1,4 @@
 import React from 'react';
-import { GlassCard } from '../ui/GlassCard';
 import { Lock } from 'lucide-react';
 
 export interface Badge {
@@ -16,7 +15,7 @@ interface BadgeShelfProps {
 
 export const BadgeShelf: React.FC<BadgeShelfProps> = ({ badges }) => {
     return (
-        <GlassCard className="p-6">
+        <div className="p-6 rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-text-primary">Earned Badges</h3>
                 <span className="text-sm text-text-muted">{badges.filter(b => b.earned).length} / {badges.length} Unlocked</span>
@@ -30,14 +29,14 @@ export const BadgeShelf: React.FC<BadgeShelfProps> = ({ badges }) => {
                     >
                         <div className={`relative w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-300
               ${badge.earned
-                                ? `bg-surface border-primary-green shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:scale-110 cursor-pointer text-3xl`
-                                : 'bg-black/20 border-white/10 grayscale opacity-50 text-2xl'
+                                ? `bg-gray-50 border-primary-green shadow-[0_0_15px_rgba(34,197,94,0.15)] hover:scale-110 cursor-pointer text-3xl`
+                                : 'bg-gray-50 border-gray-200 grayscale opacity-40 text-2xl'
                             }`}
                         >
                             {typeof badge.icon === 'string' ? <span>{badge.icon}</span> : badge.icon}
 
                             {!badge.earned && (
-                                <div className="absolute -bottom-1 -right-1 bg-surface border border-white/10 rounded-full p-1">
+                                <div className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full p-1 shadow-sm">
                                     <Lock size={10} className="text-text-muted" />
                                 </div>
                             )}
@@ -48,6 +47,6 @@ export const BadgeShelf: React.FC<BadgeShelfProps> = ({ badges }) => {
                     </div>
                 ))}
             </div>
-        </GlassCard>
+        </div>
     );
 };

@@ -1,87 +1,111 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StatCard } from '../components/domain/StatCard';
 import { IssueCard } from '../components/domain/IssueCard';
-import { FileWarning, CheckCircle, Clock, Activity, MapPin, UserCheck, AlertTriangle, Wrench, ThumbsUp, MessageCircle, Star } from 'lucide-react';
-import { IssueStatus } from '../components/ui/StatusBadge';
+import {
+    Activity,
+    CheckCircle,
+    Clock,
+    Construction,
+    Droplets,
+    FileWarning,
+    Lightbulb,
+    MapPin,
+    Trash2,
+    Trees,
+} from 'lucide-react';
+import { apiActivity, apiDashboardSummary, ActivityEvent, Issue } from '../lib/api';
+import { timeAgo } from '../lib/time';
 
-const STATS = [
-    { title: 'Total Issues Reported', value: '2,451', icon: <FileWarning size={24} />, bg: 'bg-primary-green', trend: { value: 12, isPositive: true } },
-    { title: 'Pending Review', value: '432', icon: <Clock size={24} />, bg: 'bg-status-pending', trend: { value: 5, isPositive: false } },
-    { title: 'In Progress', value: '89', icon: <Activity size={24} />, bg: 'bg-status-progress' },
-    { title: 'Resolved This Month', value: '1,204', icon: <CheckCircle size={24} />, bg: 'bg-status-resolved', trend: { value: 18, isPositive: true } },
-];
 
-const ISSUES = [
-    {
-        id: '1',
-        title: 'Large Pothole on MG Road near Junction',
-        category: { icon: '🛣️', bg: 'bg-orange-500/20', color: 'text-orange-400' },
-        location: 'Sector 12, Zone B',
-        timeAgo: '2 hrs ago',
-        description: 'Large pothole causing damage to vehicles near the main intersection. Needs immediate filling before monsoon starts.',
-        status: 'pending' as IssueStatus,
-        upvotes: 124,
-        comments: 32,
-    },
-    {
-        id: '2',
-        title: 'Streetlight completely out',
-        category: { icon: '💡', bg: 'bg-yellow-500/20', color: 'text-yellow-400' },
-        location: 'Oakwood Avenue, North District',
-        timeAgo: '5 hrs ago',
-        description: 'Entire street is pitch black at night, causing safety concerns for pedestrians and drivers.',
-        status: 'inprogress' as IssueStatus,
-        upvotes: 89,
-        comments: 14,
-    },
-    {
-        id: '3',
-        title: 'Water pipe leaking uncontrollably',
-        category: { icon: '💧', bg: 'bg-blue-500/20', color: 'text-blue-400' },
-        location: 'Downtown Square',
-        timeAgo: '1 day ago',
-        description: 'A major water main burst early this morning. Gallons of water are being wasted.',
-        status: 'resolved' as IssueStatus,
-        upvotes: 450,
-        comments: 120,
-    }
-];
-
-interface FeedEvent {
-    id: string;
-    type: 'resolved' | 'reported' | 'assigned' | 'upvoted' | 'commented' | 'escalated' | 'badge';
-    user: string;
-    avatar: string;
-    action: string;
-    target: string;
-    location?: string;
-    time: string;
-    isNew?: boolean;
-}
-
-const FEED: FeedEvent[] = [
-    { id: '1', type: 'resolved', user: 'City Dept.', avatar: 'CD', action: 'resolved', target: 'Broken traffic signal on Ring Road', location: 'Ring Road, Zone A', time: '2 min ago', isNew: true },
-    { id: '2', type: 'reported', user: 'Arjun M.', avatar: 'AM', action: 'reported', target: 'Overflowing drain near Park St', location: 'Park Street', time: '8 min ago', isNew: true },
-    { id: '3', type: 'upvoted', user: 'Priya S.', avatar: 'PS', action: 'upvoted', target: 'Large Pothole on MG Road', time: '15 min ago' },
-    { id: '4', type: 'assigned', user: 'Dept. PWD', avatar: 'PW', action: 'assigned to team', target: 'Water pipe leaking on Main Ave', location: 'Main Avenue', time: '22 min ago' },
-    { id: '5', type: 'commented', user: 'Rahul K.', avatar: 'RK', action: 'commented on', target: 'Streetlight out on Oakwood Ave', time: '35 min ago' },
-    { id: '6', type: 'escalated', user: 'System', avatar: 'SY', action: 'escalated', target: 'Fallen tree blocking Highway 9', location: 'Highway 9', time: '1 hr ago' },
-    { id: '7', type: 'badge', user: 'Meera T.', avatar: 'MT', action: 'earned badge', target: 'Civic Champion', time: '1 hr ago' },
-    { id: '8', type: 'resolved', user: 'City Dept.', avatar: 'CD', action: 'resolved', target: 'Garbage bins not collected — Zone C', location: 'Zone C', time: '2 hrs ago' },
-    { id: '9', type: 'reported', user: 'Vikram N.', avatar: 'VN', action: 'reported', target: 'Road divider broken near Toll', location: 'Highway 9', time: '2 hrs ago' },
-];
-
-const FEED_ICON: Record<FeedEvent['type'], { icon: React.ReactNode; color: string; bg: string }> = {
-    resolved:  { icon: <CheckCircle size={13} />,    color: 'text-status-resolved', bg: 'bg-status-resolved/15' },
-    reported:  { icon: <AlertTriangle size={13} />,  color: 'text-status-pending',  bg: 'bg-status-pending/15' },
-    assigned:  { icon: <Wrench size={13} />,         color: 'text-status-progress', bg: 'bg-status-progress/15' },
-    upvoted:   { icon: <ThumbsUp size={13} />,       color: 'text-accent-teal',     bg: 'bg-accent-teal/15' },
-    commented: { icon: <MessageCircle size={13} />,  color: 'text-text-secondary',  bg: 'bg-white/10' },
-    escalated: { icon: <AlertTriangle size={13} />,  color: 'text-red-400',         bg: 'bg-red-400/15' },
-    badge:     { icon: <Star size={13} />,           color: 'text-yellow-400',      bg: 'bg-yellow-400/15' },
-};
 
 export const Dashboard: React.FC = () => {
+    const [kpis, setKpis] = useState<{ totalIssues: number; pending: number; inprogress: number; resolvedThisMonth: number } | null>(null);
+    const [recentIssues, setRecentIssues] = useState<Issue[]>([]);
+    const [events, setEvents] = useState<ActivityEvent[]>([]);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function load() {
+            try {
+                const res = await apiDashboardSummary();
+                if (!cancelled) {
+                    setKpis(res.kpis);
+                    setRecentIssues(res.recentIssues);
+                }
+            } catch {
+                // ignore
+            }
+        }
+        load();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function loadFeed() {
+            try {
+                const res = await apiActivity();
+                if (!cancelled) setEvents(res.events);
+            } catch {
+                // ignore
+            }
+        }
+        loadFeed();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const stats = useMemo(() => {
+        const safe = kpis || { totalIssues: 0, pending: 0, inprogress: 0, resolvedThisMonth: 0 };
+        return [
+            { title: 'Total Issues\nReported', value: safe.totalIssues, icon: <FileWarning size={28} strokeWidth={2} />, bgClass: 'bg-[#E1F8EB]', iconBgClass: 'bg-[#73DCA3]' },
+            { title: 'Pending\nReview', value: safe.pending, icon: <Clock size={28} strokeWidth={2} />, bgClass: 'bg-[#FFE9D6]', iconBgClass: 'bg-[#FFB470]' },
+            { title: 'In\nProgress', value: safe.inprogress, icon: <Activity size={28} strokeWidth={2} />, bgClass: 'bg-[#E3F0FF]', iconBgClass: 'bg-[#85BFFF]' },
+            { title: 'Resolved\nThis Month', value: safe.resolvedThisMonth, icon: <CheckCircle size={28} strokeWidth={2} />, bgClass: 'bg-[#EFE6FF]', iconBgClass: 'bg-[#B99BFF]' },
+        ];
+    }, [kpis]);
+
+    const categoryIcon = (category: Issue['category']) => {
+        switch (category) {
+            case 'road':
+                return <Construction size={22} />;
+            case 'water':
+                return <Droplets size={22} />;
+            case 'light':
+                return <Lightbulb size={22} />;
+            case 'waste':
+                return <Trash2 size={22} />;
+            case 'park':
+                return <Trees size={22} />;
+            default:
+                return <MapPin size={22} />;
+        }
+    };
+
+    const actionVerb = (type: ActivityEvent['type']) => {
+        switch (type) {
+            case 'resolved':
+                return 'resolved';
+            case 'reported':
+                return 'reported';
+            case 'assigned':
+                return 'assigned';
+            case 'upvoted':
+                return 'upvoted';
+            case 'commented':
+                return 'commented';
+            case 'escalated':
+                return 'escalated';
+            case 'badge':
+                return 'earned badge';
+            default:
+                return 'updated';
+        }
+    };
+
     return (
         <div className="space-y-8 pb-10">
             <header className="mb-6">
@@ -91,99 +115,76 @@ export const Dashboard: React.FC = () => {
 
             {/* KPI Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                {STATS.map((stat, i) => (
+                {stats.map((stat, i) => (
                     <StatCard
                         key={i}
                         title={stat.title}
                         value={stat.value}
                         icon={stat.icon}
-                        iconBgColor={stat.bg}
-                        trend={stat.trend}
+                        bgClass={stat.bgClass}
+                        iconBgClass={stat.iconBgClass}
                     />
                 ))}
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mt-10">
                 <div className="xl:col-span-2 space-y-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-text-primary">Recent Reports</h2>
-                        <button className="text-sm text-primary-green hover:text-accent-teal transition-colors font-medium">
-                            View All &rarr;
-                        </button>
+                    <div className="flex justify-between items-center mb-1">
+                        <h2 className="text-[22px] font-bold text-gray-900 tracking-tight">Recent Reports</h2>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {ISSUES.map(issue => (
-                            <IssueCard key={issue.id} {...issue} />
-                        ))}
-                        {ISSUES.slice(0, 1).map(issue => (
-                            <IssueCard key={`${issue.id}-dup`} {...issue} />
+                        {recentIssues.map(issue => (
+                            <IssueCard
+                                key={issue._id}
+                                id={issue._id}
+                                title={issue.title}
+                                category={{ icon: categoryIcon(issue.category), bg: 'bg-[#A7F3D0]', color: 'text-[#064E3B]' }}
+                                location={issue.addressLabel}
+                                timeAgo={timeAgo(issue.createdAt)}
+                                description={issue.description}
+                                status={issue.status}
+                                upvotes={issue.upvoteCount}
+                                comments={issue.commentCount}
+                            />
                         ))}
                     </div>
                 </div>
 
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold text-text-primary">Activity Feed</h2>
-                        <div className="flex items-center gap-1.5 text-xs text-primary-green font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary-green animate-pulse" />
-                            Live
-                        </div>
-                    </div>
-
-                    <div className="glass-card border border-white/[0.07] overflow-hidden">
-                        {/* Feed header */}
-                        <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
-                            <span className="text-xs text-text-muted font-mono">Today · {FEED.length} events</span>
-                            <button className="text-xs text-primary-green hover:text-accent-teal transition-colors">View all</button>
-                        </div>
-
-                        {/* Feed items */}
-                        <div className="divide-y divide-white/[0.04] max-h-[520px] overflow-y-auto">
-                            {FEED.map(event => {
-                                const cfg = FEED_ICON[event.type];
-                                return (
-                                    <div key={event.id} className={`flex items-start gap-3 px-4 py-3.5 hover:bg-white/[0.02] transition-colors ${event.isNew ? 'bg-primary-green/[0.03]' : ''}`}>
-                                        {/* Avatar */}
-                                        <div className="relative flex-shrink-0">
-                                            <div className="w-8 h-8 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-[10px] font-bold text-text-secondary">
-                                                {event.avatar}
+                    <div className="bg-white rounded-[32px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col p-6 h-full">
+                        <h2 className="text-[22px] font-bold text-gray-900 mb-5 tracking-tight">Activity Feed</h2>
+                        
+                        <div className="bg-[#EBFDF3] rounded-[24px] px-3 py-6 flex-1 flex flex-col relative">
+                            {/* Thin right-side green active line for the first element */}
+                            <div className="absolute top-[16px] right-2 w-1.5 h-[50px] bg-[#6EE7B7] rounded-full z-10 transition-all"></div>
+                            
+                            <div className="flex flex-col relative">
+                                {events.slice(0, 4).map((event, i) => (
+                                    <div key={event._id} className={`flex flex-col gap-0 py-[18px] px-3 ${i !== 3 ? 'border-b border-[#A7F3D0]/60' : ''}`}>
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative flex-shrink-0">
+                                                <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-sm ring-2 ring-white">
+                                                    <img
+                                                        src={event.userId?.avatarUrl || `https://i.pravatar.cc/150?u=${event.userId?.name || event._id}`}
+                                                        alt="avatar"
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
                                             </div>
-                                            {/* Type badge */}
-                                            <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border border-[#0A0F0A] ${cfg.bg} ${cfg.color}`}>
-                                                {cfg.icon}
+
+                                            <div className="flex flex-col flex-1 pb-1">
+                                                <div className="bg-[#A7F3D0] px-3 py-1.5 rounded-full inline-flex w-max mb-1 shadow-sm items-center">
+                                                    <span className="text-[13px] font-bold text-[#064E3B] tracking-wide">
+                                                        {(event.userId?.name || 'System')} {actionVerb(event.type)}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[13px] text-gray-600 font-medium pl-1">{timeAgo(event.createdAt)}</span>
                                             </div>
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs leading-snug text-text-secondary">
-                                                <span className="font-semibold text-white">{event.user}</span>
-                                                {' '}<span className={cfg.color}>{event.action}</span>
-                                            </p>
-                                            <p className="text-xs text-white/70 font-medium mt-0.5 truncate">"{event.target}"</p>
-                                            {event.location && (
-                                                <p className="flex items-center gap-1 text-[11px] text-text-muted mt-0.5">
-                                                    <MapPin size={10} /> {event.location}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        {/* Time + new dot */}
-                                        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                                            <span className="text-[11px] text-text-muted whitespace-nowrap">{event.time}</span>
-                                            {event.isNew && <span className="w-1.5 h-1.5 rounded-full bg-primary-green" />}
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="px-4 py-3 border-t border-white/[0.06] flex items-center justify-center">
-                            <button className="text-xs text-text-muted hover:text-primary-green transition-colors flex items-center gap-1.5">
-                                <UserCheck size={13} /> Load more activity
-                            </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>

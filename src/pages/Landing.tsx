@@ -20,53 +20,53 @@ const LandingNav: React.FC<{ onEnter: () => void }> = ({ onEnter }) => {
 
     return (
         <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-            ? 'bg-background/85 backdrop-blur-xl border-b border-primary-green/15 shadow-[0_4px_40px_rgba(0,0,0,0.6)] py-3'
+            ? 'bg-white/90 backdrop-blur-xl border-b border-gray-200 shadow-sm py-3'
             : 'bg-transparent py-5'}`}>
             <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
                 {/* Logo */}
                 <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary-green to-accent-teal flex items-center justify-center">
-                        <Leaf size={16} className="text-background" />
+                        <Leaf size={16} className="text-white" />
                     </div>
-                    <span className="text-xl font-bold tracking-tight text-white">
+                    <span className="text-xl font-bold tracking-tight text-gray-900">
                         City<span className="text-primary-green">Resolve</span>
                     </span>
                 </div>
 
                 {/* Desktop links */}
-                <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/60">
+                <div className="hidden md:flex items-center gap-8 text-sm font-medium text-text-secondary">
                     {['Features', 'How It Works', 'Stats', 'Leaderboard'].map(link => (
                         <a key={link} href={`#${link.toLowerCase().replace(' ', '-')}`}
-                            className="hover:text-white transition-colors">{link}</a>
+                            className="hover:text-gray-900 transition-colors">{link}</a>
                     ))}
                 </div>
 
                 {/* CTA */}
                 <div className="hidden md:flex items-center gap-3">
-                    <button onClick={onEnter} className="text-sm font-medium text-white/70 hover:text-white transition-colors px-4 py-2">
+                    <button onClick={onEnter} className="text-sm font-medium text-text-secondary hover:text-gray-900 transition-colors px-4 py-2">
                         Sign In
                     </button>
                     <button onClick={onEnter}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-primary-green text-background rounded-xl text-sm font-semibold hover:bg-accent-lime transition-colors shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+                        className="flex items-center gap-2 px-5 py-2.5 bg-primary-green text-white rounded-xl text-sm font-semibold hover:bg-accent-lime transition-colors shadow-[0_4px_14px_rgba(34,197,94,0.2)]">
                         Get Started <ArrowRight size={15} />
                     </button>
                 </div>
 
                 {/* Mobile burger */}
-                <button className="md:hidden text-white/70 hover:text-white" onClick={() => setMobileOpen(v => !v)}>
+                <button className="md:hidden text-text-secondary hover:text-gray-900" onClick={() => setMobileOpen(v => !v)}>
                     {mobileOpen ? <X size={22} /> : <Menu size={22} />}
                 </button>
             </div>
 
             {/* Mobile menu */}
             {mobileOpen && (
-                <div className="md:hidden bg-background/95 backdrop-blur-xl border-t border-white/10 px-6 py-4 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="md:hidden bg-white/95 backdrop-blur-xl border-t border-gray-200 px-6 py-4 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-lg">
                     {['Features', 'How It Works', 'Stats', 'Leaderboard'].map(link => (
                         <a key={link} href={`#${link.toLowerCase().replace(' ', '-')}`}
-                            className="text-sm text-white/70 hover:text-white py-1"
+                            className="text-sm text-text-secondary hover:text-gray-900 py-1"
                             onClick={() => setMobileOpen(false)}>{link}</a>
                     ))}
-                    <button onClick={onEnter} className="mt-2 w-full py-3 bg-primary-green text-background rounded-xl text-sm font-semibold">
+                    <button onClick={onEnter} className="mt-2 w-full py-3 bg-primary-green text-white rounded-xl text-sm font-semibold">
                         Open Dashboard
                     </button>
                 </div>
@@ -87,11 +87,11 @@ const CountStat: React.FC<{ value: string; label: string; icon: React.ReactNode;
 
 /* ── Feature card ── */
 const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; desc: string; color: string; bg: string }> = ({ icon, title, desc, color, bg }) => (
-    <div className="group p-6 rounded-2xl border border-white/[0.07] bg-white/[0.03] hover:border-primary-green/30 hover:bg-primary-green/[0.04] transition-all duration-300">
-        <div className={`w-11 h-11 rounded-xl ${bg} ${color} border border-white/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+    <div className="group p-6 rounded-2xl border border-gray-200 bg-white hover:border-primary-green/30 hover:bg-primary-green/[0.04] transition-all duration-300 shadow-sm">
+        <div className={`w-11 h-11 rounded-xl ${bg} ${color} border border-gray-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
             {icon}
         </div>
-        <h3 className="text-base font-semibold text-white mb-2">{title}</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-2">{title}</h3>
         <p className="text-sm text-text-muted leading-relaxed">{desc}</p>
     </div>
 );
@@ -108,7 +108,7 @@ const StepCard: React.FC<{ num: number; title: string; desc: string; icon: React
         <div className="pb-8">
             <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-primary-green">{icon}</span>
-                <h3 className="text-base font-semibold text-white">{title}</h3>
+                <h3 className="text-base font-semibold text-gray-900">{title}</h3>
             </div>
             <p className="text-sm text-text-muted leading-relaxed">{desc}</p>
         </div>
@@ -150,7 +150,7 @@ export const Landing: React.FC = () => {
             {/* ══ HERO ══ */}
             <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
                 {/* Background layers */}
-                <div className="absolute inset-0 bg-gradient-to-b from-[#031a0a] via-background to-background" />
+                <div className="absolute inset-0 bg-[#F4F7F6]" />
                 <div className="absolute inset-0"
                     style={{
                         backgroundImage: 'linear-gradient(rgba(34,197,94,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(34,197,94,0.04) 1px, transparent 1px)',
@@ -163,15 +163,15 @@ export const Landing: React.FC = () => {
                 <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-primary-green/5 rounded-full blur-[90px] pointer-events-none" />
 
                 {/* Floating status pills */}
-                <div className="absolute top-32 left-[8%] hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.06] backdrop-blur border border-white/10 text-xs font-medium text-white/80 shadow-lg animate-float">
+                <div className="absolute top-32 left-[8%] hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-full bg-white backdrop-blur shadow-sm border border-gray-200 text-xs font-medium text-gray-700 animate-float">
                     <span className="w-2 h-2 rounded-full bg-status-resolved animate-pulse" />
                     Pothole on MG Road — Resolved
                 </div>
-                <div className="absolute top-48 right-[8%] hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.06] backdrop-blur border border-white/10 text-xs font-medium text-white/80 shadow-lg animate-float-delayed">
+                <div className="absolute top-48 right-[8%] hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-full bg-white backdrop-blur shadow-sm border border-gray-200 text-xs font-medium text-gray-700 animate-float-delayed">
                     <span className="w-2 h-2 rounded-full bg-status-pending animate-pulse" />
                     Streetlight out — Under Review
                 </div>
-                <div className="absolute bottom-40 left-[12%] hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.06] backdrop-blur border border-white/10 text-xs font-medium text-white/80 shadow-lg" style={{ animation: 'float 14s ease-in-out infinite 1s' }}>
+                <div className="absolute bottom-40 left-[12%] hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-full bg-white backdrop-blur shadow-sm border border-gray-200 text-xs font-medium text-gray-700" style={{ animation: 'float 14s ease-in-out infinite 1s' }}>
                     <span className="w-2 h-2 rounded-full bg-status-progress animate-pulse" />
                     Water leak — In Progress
                 </div>
@@ -185,7 +185,7 @@ export const Landing: React.FC = () => {
                         <ChevronRight size={13} />
                     </div>
 
-                    <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.08] mb-6">
+                    <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 tracking-tight leading-[1.08] mb-6">
                         Report City Issues.{' '}
                         <span className="relative inline-block">
                             <span className="text-primary-green" style={{ textShadow: '0 0 40px rgba(34,197,94,0.4)' }}>
@@ -204,11 +204,11 @@ export const Landing: React.FC = () => {
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
                         <button onClick={goToDashboard}
-                            className="flex items-center gap-2.5 px-8 py-4 bg-primary-green text-background rounded-2xl text-base font-bold hover:bg-accent-lime transition-all shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:shadow-[0_0_50px_rgba(34,197,94,0.5)] hover:scale-[1.02] active:scale-[0.98]">
+                            className="flex items-center gap-2.5 px-8 py-4 bg-primary-green text-white rounded-2xl text-base font-bold hover:bg-accent-lime transition-all shadow-[0_4px_14px_rgba(34,197,94,0.2)] hover:shadow-[0_6px_20px_rgba(34,197,94,0.3)] hover:scale-[1.02] active:scale-[0.98]">
                             Open Dashboard <ArrowRight size={18} />
                         </button>
                         <button onClick={goToDashboard}
-                            className="flex items-center gap-2.5 px-8 py-4 bg-white/[0.07] backdrop-blur border border-white/15 text-white rounded-2xl text-base font-semibold hover:bg-white/[0.12] transition-all">
+                            className="flex items-center gap-2.5 px-8 py-4 bg-white shadow-sm backdrop-blur border border-gray-200 text-gray-900 rounded-2xl text-base font-semibold hover:bg-gray-50 transition-all">
                             <Play size={16} className="text-primary-green" />
                             See How It Works
                         </button>
@@ -216,12 +216,12 @@ export const Landing: React.FC = () => {
 
                     {/* Trust stats row */}
                     <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-                        <CountStat value="2,451" label="Issues Reported" icon={<AlertTriangle size={12} />} color="text-white" />
-                        <div className="w-px h-8 bg-white/10 hidden md:block" />
+                        <CountStat value="2,451" label="Issues Reported" icon={<AlertTriangle size={12} />} color="text-gray-900" />
+                        <div className="w-px h-8 bg-gray-300 hidden md:block" />
                         <CountStat value="1,204" label="Resolved This Month" icon={<CheckCircle size={12} />} color="text-status-resolved" />
-                        <div className="w-px h-8 bg-white/10 hidden md:block" />
+                        <div className="w-px h-8 bg-gray-300 hidden md:block" />
                         <CountStat value="8,300+" label="Active Citizens" icon={<Users size={12} />} color="text-accent-teal" />
-                        <div className="w-px h-8 bg-white/10 hidden md:block" />
+                        <div className="w-px h-8 bg-gray-300 hidden md:block" />
                         <CountStat value="48 hrs" label="Avg. Resolution Time" icon={<Clock size={12} />} color="text-yellow-400" />
                     </div>
                 </div>
@@ -235,9 +235,9 @@ export const Landing: React.FC = () => {
                 <div className="flex flex-wrap justify-center gap-3">
                     {categories.map(cat => (
                         <div key={cat.label}
-                            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl border border-white/[0.07] ${cat.bg} backdrop-blur cursor-pointer hover:border-white/20 transition-colors group`}>
+                            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl border border-gray-200 bg-white shadow-sm cursor-pointer hover:border-gray-300 transition-colors group`}>
                             <span className={cat.color}>{cat.icon}</span>
-                            <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">{cat.label}</span>
+                            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">{cat.label}</span>
                             <span className="text-xs text-text-muted">{cat.count}</span>
                         </div>
                     ))}
@@ -250,7 +250,7 @@ export const Landing: React.FC = () => {
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary-green/20 bg-primary-green/8 text-primary-green text-xs font-semibold mb-4">
                         <Zap size={12} /> Platform Features
                     </div>
-                    <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+                    <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
                         Everything you need to<br />
                         <span className="text-primary-green">improve your city</span>
                     </h2>
@@ -270,7 +270,7 @@ export const Landing: React.FC = () => {
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-accent-teal/20 bg-accent-teal/8 text-accent-teal text-xs font-semibold mb-6">
                             <TrendingUp size={12} /> How It Works
                         </div>
-                        <h2 className="text-4xl font-bold text-white mb-4 tracking-tight leading-tight">
+                        <h2 className="text-4xl font-bold text-gray-900 mb-4 tracking-tight leading-tight">
                             From report to resolution<br />in four simple steps
                         </h2>
                         <p className="text-text-muted mb-10 leading-relaxed">
@@ -287,14 +287,14 @@ export const Landing: React.FC = () => {
                     {/* Dashboard preview mockup */}
                     <div className="relative">
                         <div className="absolute inset-0 bg-primary-green/10 rounded-3xl blur-3xl" />
-                        <div className="relative rounded-2xl border border-white/12 bg-white/[0.04] backdrop-blur-xl overflow-hidden shadow-2xl p-5">
+                        <div className="relative rounded-2xl border border-gray-200 bg-white backdrop-blur-xl overflow-hidden shadow-xl p-5">
                             {/* Mock header */}
-                            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/[0.06]">
+                            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
                                 <div className="flex items-center gap-2">
                                     <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-primary-green to-accent-teal flex items-center justify-center">
-                                        <Leaf size={12} className="text-background" />
+                                        <Leaf size={12} className="text-white" />
                                     </div>
-                                    <span className="text-sm font-bold text-white">City<span className="text-primary-green">Resolve</span></span>
+                                    <span className="text-sm font-bold text-gray-900">City<span className="text-primary-green">Resolve</span></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-full bg-primary-green animate-pulse" />
@@ -309,7 +309,7 @@ export const Landing: React.FC = () => {
                                     { label: 'Pending', value: '432', color: 'text-status-pending', trend: '-5%' },
                                     { label: 'In Progress', value: '89', color: 'text-status-progress', trend: '0%' },
                                 ].map(s => (
-                                    <div key={s.label} className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                                    <div key={s.label} className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                                         <p className="text-[11px] text-text-muted mb-1">{s.label}</p>
                                         <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
                                         <p className="text-[10px] text-text-muted mt-0.5">{s.trend} this month</p>
@@ -322,9 +322,9 @@ export const Landing: React.FC = () => {
                                 { title: 'Streetlight out — Oakwood', status: 'In Progress', dot: 'bg-status-progress', cat: 'Lights' },
                                 { title: 'Water pipe burst', status: 'Resolved', dot: 'bg-status-resolved', cat: 'Water' },
                             ].map((item, i) => (
-                                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
+                                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-gray-100 last:border-0">
                                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${item.dot}`} />
-                                    <span className="text-xs text-white flex-1 truncate">{item.title}</span>
+                                    <span className="text-xs text-gray-900 flex-1 truncate">{item.title}</span>
                                     <span className="text-[11px] text-text-muted">{item.cat}</span>
                                     <span className={`text-[11px] font-medium ${item.dot === 'bg-status-resolved' ? 'text-status-resolved' : item.dot === 'bg-status-progress' ? 'text-status-progress' : 'text-status-pending'}`}>{item.status}</span>
                                 </div>
@@ -336,9 +336,9 @@ export const Landing: React.FC = () => {
 
             {/* ══ STATS BAND ══ */}
             <section id="stats" className="py-16 px-6">
-                <div className="max-w-7xl mx-auto rounded-2xl border border-primary-green/15 bg-primary-green/[0.05] backdrop-blur overflow-hidden relative">
+                <div className="max-w-7xl mx-auto rounded-2xl border border-primary-green/15 bg-white shadow-sm overflow-hidden relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-primary-green/5 via-transparent to-accent-teal/5" />
-                    <div className="relative grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-white/[0.07]">
+                    <div className="relative grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-gray-100">
                         {[
                             { value: '42', label: 'Cities onboard', icon: <MapPin size={16} />, color: 'text-primary-green' },
                             { value: '8,300+', label: 'Active citizens', icon: <Users size={16} />, color: 'text-accent-teal' },
@@ -361,25 +361,25 @@ export const Landing: React.FC = () => {
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-400/20 bg-yellow-400/8 text-yellow-400 text-xs font-semibold mb-4">
                         <Star size={12} /> Community Voice
                     </div>
-                    <h2 className="text-4xl font-bold text-white tracking-tight">
+                    <h2 className="text-4xl font-bold text-gray-900 tracking-tight">
                         Trusted by real citizens
                     </h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     {testimonials.map(t => (
-                        <div key={t.name} className="p-6 rounded-2xl border border-white/[0.07] bg-white/[0.03] hover:border-white/15 transition-colors">
+                        <div key={t.name} className="p-6 rounded-2xl border border-gray-200 bg-white shadow-sm hover:border-gray-300 transition-colors">
                             <div className="flex gap-0.5 mb-4">
                                 {Array.from({ length: t.stars }).map((_, i) => (
                                     <Star key={i} size={14} className="text-yellow-400 fill-yellow-400" />
                                 ))}
                             </div>
                             <p className="text-sm text-text-muted leading-relaxed mb-5">"{t.text}"</p>
-                            <div className="flex items-center gap-3 pt-4 border-t border-white/[0.06]">
-                                <div className="w-8 h-8 rounded-full bg-primary-green/20 border border-primary-green/30 flex items-center justify-center text-xs font-bold text-primary-green">
+                            <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                                <div className="w-8 h-8 rounded-full bg-primary-light border border-primary-green/30 flex items-center justify-center text-xs font-bold text-primary-dark">
                                     {t.avatar}
                                 </div>
                                 <div>
-                                    <p className="text-sm font-semibold text-white">{t.name}</p>
+                                    <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                                     <p className="text-xs text-text-muted">{t.role}</p>
                                 </div>
                             </div>
@@ -402,14 +402,14 @@ export const Landing: React.FC = () => {
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 bg-primary-green/15 blur-[80px] rounded-full" />
 
                     <div className="relative z-10">
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+                        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
                             Your city. <span className="text-primary-green">Your voice.</span>
                         </h2>
                         <p className="text-text-muted mb-8 max-w-lg mx-auto text-base">
                             Join thousands of citizens already making a difference. Report your first issue in under 60 seconds.
                         </p>
                         <button onClick={goToDashboard}
-                            className="inline-flex items-center gap-3 px-10 py-4 bg-primary-green text-background rounded-2xl text-base font-bold hover:bg-accent-lime transition-all shadow-[0_0_40px_rgba(34,197,94,0.4)] hover:shadow-[0_0_60px_rgba(34,197,94,0.5)] hover:scale-[1.02] active:scale-[0.98]">
+                            className="inline-flex items-center gap-3 px-10 py-4 bg-primary-green text-white rounded-2xl text-base font-bold hover:bg-accent-lime transition-all shadow-[0_4px_14px_rgba(34,197,94,0.2)] hover:shadow-[0_6px_20px_rgba(34,197,94,0.3)] hover:scale-[1.02] active:scale-[0.98]">
                             Get Started Free <ArrowRight size={18} />
                         </button>
                     </div>
@@ -417,21 +417,21 @@ export const Landing: React.FC = () => {
             </section>
 
             {/* ══ FOOTER ══ */}
-            <footer className="border-t border-white/[0.06] py-10 px-6">
+            <footer className="border-t border-gray-200 py-10 px-6">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-primary-green to-accent-teal flex items-center justify-center">
-                            <Leaf size={13} className="text-background" />
+                            <Leaf size={13} className="text-white" />
                         </div>
-                        <span className="font-bold text-white">City<span className="text-primary-green">Resolve</span></span>
+                        <span className="font-bold text-gray-900">City<span className="text-primary-green">Resolve</span></span>
                     </div>
                     <p className="text-xs text-text-muted text-center">
                         © 2026 CityResolve. Building better cities through civic technology.
                     </p>
                     <div className="flex items-center gap-5 text-xs text-text-muted">
-                        <a href="#" className="hover:text-white transition-colors">Privacy</a>
-                        <a href="#" className="hover:text-white transition-colors">Terms</a>
-                        <a href="#" className="hover:text-white transition-colors">Contact</a>
+                        <a href="#" className="hover:text-gray-900 transition-colors">Privacy</a>
+                        <a href="#" className="hover:text-gray-900 transition-colors">Terms</a>
+                        <a href="#" className="hover:text-gray-900 transition-colors">Contact</a>
                     </div>
                 </div>
             </footer>

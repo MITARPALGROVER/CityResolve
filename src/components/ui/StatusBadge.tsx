@@ -10,16 +10,16 @@ interface StatusBadgeProps {
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '', showIcon = true }) => {
   const config = {
-    pending: { color: 'text-status-pending', bg: 'bg-status-pending/10', border: 'border-status-pending/20', label: 'Pending', icon: '🟡' },
-    inprogress: { color: 'text-status-progress', bg: 'bg-status-progress/10', border: 'border-status-progress/20', label: 'In Progress', icon: '🔵' },
-    resolved: { color: 'text-status-resolved', bg: 'bg-status-resolved/10', border: 'border-status-resolved/20', label: 'Resolved', icon: '🟢' },
-    rejected: { color: 'text-status-rejected', bg: 'bg-status-rejected/10', border: 'border-status-rejected/20', label: 'Rejected', icon: '🔴' }
+    pending: { color: 'text-orange-900', bg: 'bg-pastel-orange', label: 'Pending', icon: '🟡' },
+    inprogress: { color: 'text-blue-900', bg: 'bg-pastel-blue', label: 'In Progress', icon: '🔵' },
+    resolved: { color: 'text-primary-dark', bg: 'bg-pastel-green', label: 'Resolved', icon: '🟢' },
+    rejected: { color: 'text-red-900', bg: 'bg-red-100', label: 'Rejected', icon: '🔴' }
   };
 
-  const { color, bg, border, label, icon } = config[status];
+  const { color, bg, label, icon } = config[status];
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${bg} ${color} ${border} ${className}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm ${bg} ${color} ${className}`}>
       {showIcon && <span>{icon}</span>}
       {label}
     </span>

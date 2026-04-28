@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, User, Menu } from 'lucide-react';
+import React from 'react';
+import { Bell, ChevronDown, Menu, Search } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 
 interface NavbarProps {
     onMenuClick?: () => void;
@@ -8,64 +10,87 @@ interface NavbarProps {
     onProfileClick?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onMenuClick, onNotificationClick, unreadCount = 0, onProfileClick }) => {
-    const [scrolled, setScrolled] = useState(false);
+const PAGE_META: Record<string, { title: string; subtitle?: string }> = {
+    '/dashboard': { title: 'City Overview' },
+    '/report': { title: 'Report an Issue' },
+    '/issues': { title: 'Open Issues' },
+    '/map': { title: 'Map View' },
+    '/rewards': { title: 'Rewards & Leaderboard' },
+    '/settings': { title: 'Settings' },
+    '/logout': { title: 'Sign Out' },
+};
 
-    useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 10);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+export const Navbar: React.FC<NavbarProps> = ({ onMenuClick, onNotificationClick, unreadCount = 0, onProfileClick }) => {
+    const location = useLocation();
+    const { user } = useAuth();
+    const page = PAGE_META[location.pathname] || { title: 'CityResolve' };
+    const initials = user?.name
+        ?.split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join('') || 'CR';
 
     return (
-        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-                ? 'bg-surface/90 backdrop-blur-md border-b border-gray-200 py-3 shadow-sm'
-                : 'bg-background py-3'
-            }`}>
-            <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
+        <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-black/5 bg-[rgba(255,255,255,0.88)] backdrop-blur-xl">
+            <div className="flex h-full items-center px-4 md:px-6 lg:pl-[284px] lg:pr-8">
+                <button
+                    className="mr-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/5 bg-white text-[var(--color-text-secondary)] lg:hidden"
+                    onClick={onMenuClick}
+                    aria-label="Open menu"
+                >
+                    <Menu size={20} />
+                </button>
 
-                {/* Logo area */}
-                <div className="flex items-center gap-3">
-                    <button className="lg:hidden text-text-primary p-1" onClick={onMenuClick}>
-                        <Menu size={24} />
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center">
-                                <span className="text-primary-green font-bold text-lg">🌿</span>
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-text-primary hidden sm:block">
-                            City<span className="text-primary-green">Resolve</span>
-                        </span>
-                    </div>
+                <div>
+                    <p className="text-xl font-bold tracking-tight">{page.title}</p>
+                    <p className="hidden text-xs text-[var(--color-text-muted)] md:block">
+                        Professional civic operations dashboard
+                    </p>
                 </div>
 
+                <div className="ml-auto flex items-center gap-2 md:gap-3">
+                    <label className="hidden items-center gap-2 rounded-full border border-black/5 bg-[var(--color-bg-card-alt)] px-4 py-2 text-sm text-[var(--color-text-secondary)] shadow-sm md:flex">
+                        <Search size={16} className="text-[var(--color-text-muted)]" />
+                        <input
+                            aria-label="Search issues"
+                            placeholder="Search issues..."
+                            className="w-48 border-none bg-transparent p-0 text-sm shadow-none focus:shadow-none"
+                        />
+                    </label>
 
-
-                {/* Right side actions */}
-                <div className="flex items-center gap-4">
                     <button
                         onClick={onNotificationClick}
-                        className="relative p-2 rounded-full bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-colors"
+                        className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/5 bg-white text-[var(--color-text-secondary)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                        aria-label="Open notifications"
                     >
-                        <Bell size={20} className="text-text-secondary" />
+                        <Bell size={18} />
                         {unreadCount > 0 && (
-                            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-status-rejected rounded-full border-2 border-surface animate-pulse" />
+                            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--color-green-light)] ring-2 ring-white" />
                         )}
                     </button>
 
                     <button
                         onClick={onProfileClick}
-                        className="w-10 h-10 rounded-full bg-surface border border-gray-200 hover:border-primary-green transition-colors overflow-hidden flex items-center justify-center relative group"
+                        className="flex items-center gap-3 rounded-full border border-black/5 bg-white px-2 py-1.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                     >
-                        <User size={20} className="text-text-secondary group-hover:text-primary-green transition-colors" />
-                        {/* If we had an avatar image: <img src="..." className="w-full h-full object-cover" /> */}
+                        {user?.avatarUrl ? (
+                            <img src={user.avatarUrl} alt={user.name} className="h-8 w-8 rounded-full object-cover" />
+                        ) : (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-sidebar-bg)] text-xs font-bold text-white">
+                                {initials}
+                            </div>
+                        )}
+                        <div className="hidden text-left md:block">
+                            <p className="text-sm font-bold leading-none">{user?.name || 'Citizen User'}</p>
+                            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                                {user?.role === 'admin' ? 'City Operations' : 'Community Member'}
+                            </p>
+                        </div>
+                        <ChevronDown size={16} className="hidden text-[var(--color-text-muted)] md:block" />
                     </button>
                 </div>
-
             </div>
-        </nav>
+        </header>
     );
 };

@@ -28,6 +28,7 @@ const IssueSchema = new mongoose.Schema(
     commentCount: { type: Number, default: 0 },
 
     assignedDepartment: { type: String, default: '' },
+    progressPercent: { type: Number, default: 15, min: 0, max: 100 },
   },
   { timestamps: true }
 );

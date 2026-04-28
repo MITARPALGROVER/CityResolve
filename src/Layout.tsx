@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { NotificationDrawer } from './components/layout/NotificationDrawer';
-import { useNavigate } from 'react-router-dom';
 import { apiListNotifications, apiMarkNotificationRead, Notification } from './lib/api';
 import { timeAgo } from './lib/time';
 
@@ -20,7 +19,7 @@ export const Layout: React.FC = () => {
                 const res = await apiListNotifications();
                 if (!cancelled) setNotifications(res.notifications);
             } catch {
-                // ignore; drawer will show empty state
+                // keep empty state
             }
         }
         load();
@@ -29,29 +28,28 @@ export const Layout: React.FC = () => {
         };
     }, []);
 
-    const unreadCount = notifications.filter(n => !n.read).length;
+    const unreadCount = notifications.filter((notification) => !notification.read).length;
 
     async function onNotificationClick(id: string) {
-        const n = notifications.find(x => x._id === id);
-        if (n && !n.read) {
-            try {
-                await apiMarkNotificationRead(id);
-                setNotifications(prev => prev.map(x => x._id === id ? { ...x, read: true } : x));
-            } catch {
-                // ignore
-            }
+        const notification = notifications.find((item) => item._id === id);
+        if (!notification || notification.read) return;
+        try {
+            await apiMarkNotificationRead(id);
+            setNotifications((prev) => prev.map((item) => (item._id === id ? { ...item, read: true } : item)));
+        } catch {
+            // ignore optimistic failure
         }
     }
 
     async function onMarkAllRead() {
-        const unread = notifications.filter(n => !n.read);
+        const unread = notifications.filter((notification) => !notification.read);
         if (unread.length === 0) return;
-        await Promise.allSettled(unread.map(n => apiMarkNotificationRead(n._id)));
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        await Promise.allSettled(unread.map((notification) => apiMarkNotificationRead(notification._id)));
+        setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })));
     }
 
     return (
-        <div className="min-h-screen flex flex-col relative">
+        <div className="page-shell min-h-screen">
             <Navbar
                 onMenuClick={() => setSidebarOpen(true)}
                 onNotificationClick={() => setDrawerOpen(true)}
@@ -59,15 +57,14 @@ export const Layout: React.FC = () => {
                 onProfileClick={() => navigate('/settings')}
             />
 
-            <div className="flex flex-1 pt-[60px]">
+            <div className="flex pt-16">
                 <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-                <main className="flex-1 w-full lg:ml-[260px] min-h-[calc(100vh-60px)] transition-all duration-300">
-                    {/* Background Elements */}
-                    <div className="fixed inset-0 bg-background -z-10" />
-
-                    <div className="relative z-10 p-4 md:p-6 lg:px-8 lg:pt-2 lg:pb-8 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <Outlet />
+                <main className="min-h-[calc(100vh-64px)] flex-1 lg:ml-[240px]">
+                    <div className="mx-auto max-w-[1500px] px-4 py-5 md:px-6 lg:px-8">
+                        <div className="animate-page-fade">
+                            <Outlet />
+                        </div>
                     </div>
                 </main>
             </div>
@@ -75,13 +72,13 @@ export const Layout: React.FC = () => {
             <NotificationDrawer
                 isOpen={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
-                notifications={notifications.map(n => ({
-                    id: n._id,
-                    title: n.title,
-                    description: n.description,
-                    timestamp: timeAgo(n.createdAt),
-                    read: n.read,
-                    type: (n.type === 'resolved' ? 'resolved' : 'info'),
+                notifications={notifications.map((notification) => ({
+                    id: notification._id,
+                    title: notification.title,
+                    description: notification.description,
+                    timestamp: timeAgo(notification.createdAt),
+                    read: notification.read,
+                    type: notification.type === 'resolved' ? 'resolved' : 'info',
                 }))}
                 onNotificationClick={onNotificationClick}
                 onMarkAllRead={onMarkAllRead}

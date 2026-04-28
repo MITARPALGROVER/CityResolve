@@ -91,6 +91,8 @@ export type Issue = {
   photoUrls: string[];
   upvoteCount: number;
   commentCount: number;
+  assignedDepartment?: string;
+  progressPercent?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -159,7 +161,7 @@ export async function apiCreateComment(issueId: string, body: string) {
   });
 }
 
-export async function apiAdminPatchIssue(issueId: string, patch: { status?: IssueStatus; assignedDepartment?: string }) {
+export async function apiAdminPatchIssue(issueId: string, patch: { status?: IssueStatus; assignedDepartment?: string; progressPercent?: number }) {
   return apiFetch<{ issue: Issue }>(`/issues/${issueId}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
@@ -187,7 +189,15 @@ export async function apiMarkNotificationRead(id: string) {
 }
 
 export async function apiDashboardSummary() {
-  return apiFetch<{ kpis: { totalIssues: number; pending: number; inprogress: number; resolvedThisMonth: number }; recentIssues: Issue[] }>(
+  return apiFetch<{
+    kpis: { totalIssues: number; pending: number; inprogress: number; resolvedThisMonth: number };
+    healthScore: number;
+    recentIssues: Issue[];
+    monthlyTrend: { month: string; reported: number; resolved: number; pending: number }[];
+    categoryBreakdown: { key: IssueCategory; name: string; value: number }[];
+    activeProjects: { id: string; name: string; progress: number; status: string; category: IssueCategory }[];
+    events: ActivityEvent[];
+  }>(
     `/dashboard/summary`
   );
 }

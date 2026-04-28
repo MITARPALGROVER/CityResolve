@@ -1,57 +1,62 @@
-import React, { useEffect, useState } from 'react';
-import { GlassCard } from '../components/ui/GlassCard';
-import { StatusBadge, IssueStatus } from '../components/ui/StatusBadge';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    Search, Filter, MapPin, ThumbsUp, MessageCircle, ArrowRight,
-    MoreHorizontal, Construction, Droplets, Lightbulb, Trash2, Trees, HelpCircle,
-    SlidersHorizontal, ChevronDown, AlertTriangle
+    AlertTriangle,
+    ArrowRight,
+    CalendarRange,
+    ChevronDown,
+    Construction,
+    Droplets,
+    HelpCircle,
+    Lightbulb,
+    MapPin,
+    MessageCircle,
+    Search,
+    SlidersHorizontal,
+    ThumbsUp,
+    Trash2,
+    Trees,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiIssueCounts, apiListIssues, Issue } from '../lib/api';
 import { timeAgo } from '../lib/time';
 
 type Category = 'all' | 'road' | 'water' | 'light' | 'waste' | 'park' | 'other';
-type StatusFilter = 'all' | IssueStatus;
-type SortOption = 'newest' | 'upvotes' | 'comments';
+type SortOption = 'newest' | 'oldest' | 'upvotes' | 'critical';
+type Severity = 'low' | 'medium' | 'high' | 'critical';
+type StatusFilter = 'all' | 'pending' | 'inprogress' | 'resolved';
 
-const CATEGORY_META: Record<string, { icon: React.ReactNode; color: string; bg: string; label: string }> = {
-    road:  { icon: <Construction size={18} />,  color: 'text-orange-400', bg: 'bg-orange-500/15', label: 'Roads & Traffic' },
-    water: { icon: <Droplets size={18} />,      color: 'text-blue-400',   bg: 'bg-blue-500/15',   label: 'Water & Plumbing' },
-    light: { icon: <Lightbulb size={18} />,     color: 'text-yellow-400', bg: 'bg-yellow-500/15', label: 'Streetlights' },
-    waste: { icon: <Trash2 size={18} />,        color: 'text-red-400',    bg: 'bg-red-500/15',    label: 'Waste Management' },
-    park:  { icon: <Trees size={18} />,         color: 'text-primary-dark', bg: 'bg-primary-light', label: 'Parks & Trees' },
-    other: { icon: <HelpCircle size={18} />,    color: 'text-gray-500', bg: 'bg-gray-100',      label: 'Other' },
+const categoryConfig = {
+    road: { label: 'Roads', full: 'Roads & Traffic', color: '#f97316', bg: '#fff1e8', icon: Construction },
+    water: { label: 'Water', full: 'Water & Plumbing', color: '#3b82f6', bg: '#eff6ff', icon: Droplets },
+    light: { label: 'Lights', full: 'Streetlights', color: '#f59e0b', bg: '#fff8e1', icon: Lightbulb },
+    waste: { label: 'Waste', full: 'Waste Management', color: '#ef4444', bg: '#fef2f2', icon: Trash2 },
+    park: { label: 'Parks', full: 'Parks & Trees', color: '#22c55e', bg: '#f0fdf4', icon: Trees },
+    other: { label: 'Other', full: 'Other', color: '#9ca3af', bg: '#f3f4f6', icon: HelpCircle },
+} as const;
+
+const severityStyle: Record<Severity, string> = {
+    low: 'bg-[#eff6ff] text-[#2563eb]',
+    medium: 'bg-[#fff8e1] text-[#d97706]',
+    high: 'bg-[#fff7ed] text-[#ea580c]',
+    critical: 'bg-[#fef2f2] text-[#dc2626]',
 };
 
-const CATEGORY_TABS: { id: Category; label: string }[] = [
-    { id: 'all',   label: 'All' },
-    { id: 'road',  label: 'Roads' },
-    { id: 'water', label: 'Water' },
-    { id: 'light', label: 'Lights' },
-    { id: 'waste', label: 'Waste' },
-    { id: 'park',  label: 'Parks' },
-    { id: 'other', label: 'Other' },
-];
-
-type IssueRow = Issue;
-
-const SEVERITY_CONFIG = {
-    low:      { label: 'Low',      color: 'text-blue-400',   dot: 'bg-blue-400' },
-    medium:   { label: 'Medium',   color: 'text-yellow-400', dot: 'bg-yellow-400' },
-    high:     { label: 'High',     color: 'text-orange-400', dot: 'bg-orange-400' },
-    critical: { label: 'Critical', color: 'text-red-400',    dot: 'bg-red-400' },
+const statusStyle: Record<Exclude<StatusFilter, 'all'>, string> = {
+    pending: 'bg-[#fff8e1] text-[#d97706]',
+    inprogress: 'bg-[#eff6ff] text-[#2563eb]',
+    resolved: 'bg-[#f0fdf4] text-[#16a34a]',
 };
 
 export const OpenIssues: React.FC = () => {
     const [search, setSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState<Category>('all');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [selectedSeverities, setSelectedSeverities] = useState<Severity[]>([]);
     const [sortBy, setSortBy] = useState<SortOption>('newest');
     const [showFilters, setShowFilters] = useState(false);
-    const [issues, setIssues] = useState<IssueRow[]>([]);
+    const [issues, setIssues] = useState<Issue[]>([]);
     const [counts, setCounts] = useState<{ total: number; pending: number; inprogress: number; resolved: number; rejected: number } | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -61,7 +66,7 @@ export const OpenIssues: React.FC = () => {
                 const res = await apiIssueCounts();
                 if (!cancelled) setCounts(res);
             } catch {
-                // ignore
+                if (!cancelled) setCounts(null);
             }
         }
         loadCounts();
@@ -74,9 +79,8 @@ export const OpenIssues: React.FC = () => {
         let cancelled = false;
         async function loadIssues() {
             setLoading(true);
-            setError(null);
             try {
-                const sort = sortBy === 'upvotes' ? 'upvoted' : sortBy === 'comments' ? 'commented' : 'newest';
+                const sort = sortBy === 'upvotes' ? 'upvoted' : 'newest';
                 const res = await apiListIssues({
                     q: search,
                     category: categoryFilter,
@@ -86,8 +90,8 @@ export const OpenIssues: React.FC = () => {
                     pageSize: 50,
                 });
                 if (!cancelled) setIssues(res.issues);
-            } catch (e: any) {
-                if (!cancelled) setError(e?.message || 'Failed to load issues');
+            } catch {
+                if (!cancelled) setIssues([]);
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -98,205 +102,281 @@ export const OpenIssues: React.FC = () => {
         };
     }, [search, categoryFilter, statusFilter, sortBy]);
 
-    const totalCounts = counts || { total: issues.length, pending: 0, inprogress: 0, resolved: 0, rejected: 0 };
+    const visibleIssues = useMemo(() => {
+        let next = [...issues];
+        if (selectedSeverities.length > 0) {
+            next = next.filter((issue) => selectedSeverities.includes(issue.severity));
+        }
+        if (sortBy === 'oldest') {
+            next.sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+        } else if (sortBy === 'critical') {
+            const order = { critical: 0, high: 1, medium: 2, low: 3 };
+            next.sort((a, b) => order[a.severity] - order[b.severity]);
+        } else if (sortBy === 'upvotes') {
+            next.sort((a, b) => b.upvoteCount - a.upvoteCount);
+        }
+        return next;
+    }, [issues, selectedSeverities, sortBy]);
+
+    const safeCounts = counts || { total: visibleIssues.length, pending: 0, inprogress: 0, resolved: 0, rejected: 0 };
+
+    const categoryCounts = useMemo(() => {
+        const entries = { all: safeCounts.total, road: 0, water: 0, light: 0, waste: 0, park: 0, other: 0 } as Record<Category, number>;
+        issues.forEach((issue) => {
+            entries[issue.category] += 1;
+        });
+        return entries;
+    }, [issues, safeCounts.total]);
+
+    const toggleSeverity = (value: Severity) => {
+        setSelectedSeverities((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
+    };
 
     return (
-        <div className="space-y-6 pb-12">
-            {/* Header */}
-            <header>
-                <div className="flex items-center gap-3 mb-1">
-                    <div className="w-9 h-9 rounded-xl bg-primary-light border border-primary-green/30 flex items-center justify-center">
-                        <AlertTriangle size={17} className="text-primary-dark" />
+        <div className="space-y-6">
+            <section className="app-card p-6">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                    <div>
+                        <p className="section-kicker">Issue Registry</p>
+                        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Open Issues</h1>
+                        <p className="mt-2 text-sm text-[var(--color-text-secondary)]">Browse and track all reported city issues.</p>
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Open Issues</h1>
+                    <div className="flex flex-wrap gap-3">
+                        <button className="secondary-button px-4 py-3 text-sm font-semibold">Export CSV</button>
+                        <button className="primary-button px-4 py-3 text-sm font-semibold">+ Report New Issue</button>
+                    </div>
                 </div>
-                <p className="text-text-muted text-sm ml-12">Browse and track all reported city issues.</p>
-            </header>
+            </section>
 
-            {/* Summary pills */}
-            <div className="flex flex-wrap gap-3">
-                {([
-                    { label: 'Total', value: totalCounts.total, color: 'border-gray-200 text-gray-900 bg-gray-50' },
-                    { label: 'Pending', value: totalCounts.pending, color: 'border-orange-200 text-orange-900 bg-orange-50' },
-                    { label: 'In Progress', value: totalCounts.inprogress, color: 'border-blue-200 text-blue-900 bg-blue-50' },
-                    { label: 'Resolved', value: totalCounts.resolved, color: 'border-green-200 text-primary-dark bg-primary-light' },
-                ] as const).map(pill => (
-                    <div key={pill.label} className={`px-4 py-1.5 rounded-full border text-sm font-medium flex items-center gap-2 ${pill.color}`}>
-                        <span className="font-bold">{pill.value}</span>
-                        <span className="text-xs opacity-70">{pill.label}</span>
-                    </div>
-                ))}
-            </div>
+            <section className="app-card overflow-hidden">
+                <div className="grid sm:grid-cols-2 xl:grid-cols-4">
+                    {[
+                        { label: 'Total', value: safeCounts.total, key: 'all', color: '#111827' },
+                        { label: 'Pending', value: safeCounts.pending, key: 'pending', color: '#d97706' },
+                        { label: 'In Progress', value: safeCounts.inprogress, key: 'inprogress', color: '#2563eb' },
+                        { label: 'Resolved', value: safeCounts.resolved, key: 'resolved', color: '#16a34a' },
+                    ].map((item, index) => (
+                        <button
+                            key={item.label}
+                            onClick={() => setStatusFilter(item.key as StatusFilter)}
+                            className={`border-b px-6 py-5 text-left transition sm:border-b-0 sm:border-r ${
+                                index === 3 ? 'sm:border-r-0' : ''
+                            } ${
+                                statusFilter === item.key
+                                    ? 'bg-[var(--color-green-pale)] border-[rgba(45,122,79,0.18)]'
+                                    : 'border-black/5 bg-white'
+                            }`}
+                        >
+                            <p className="text-3xl font-extrabold" style={{ color: item.color }}>{item.value}</p>
+                            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--color-text-muted)]">{item.label}</p>
+                        </button>
+                    ))}
+                </div>
+            </section>
 
-            {/* Search + Filter bar */}
-            <GlassCard elevated className="p-4">
-                <div className="flex flex-col sm:flex-row gap-3">
-                    {/* Search */}
-                    <div className="relative flex-1">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <section className="app-card p-5">
+                <div className="flex flex-col gap-3 lg:flex-row">
+                    <label className="flex flex-1 items-center gap-3 rounded-full border border-black/10 bg-white px-4 py-3">
+                        <Search size={16} className="text-[var(--color-text-muted)]" />
                         <input
-                            type="text"
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            placeholder="Search by title or location..."
-                            className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl"
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Search by title, location, or ID..."
+                            className="w-full border-none bg-transparent p-0 shadow-none focus:shadow-none"
                         />
-                    </div>
-
-                    {/* Sort */}
+                    </label>
                     <div className="relative">
-                        <SlidersHorizontal size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                         <select
                             value={sortBy}
-                            onChange={e => setSortBy(e.target.value as SortOption)}
-                            className="pl-9 pr-8 py-2.5 text-sm rounded-xl appearance-none cursor-pointer"
+                            onChange={(event) => setSortBy(event.target.value as SortOption)}
+                            className="h-full min-w-[180px] appearance-none rounded-full border border-black/10 bg-white px-4 py-3 pr-10 text-sm"
                         >
                             <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
                             <option value="upvotes">Most Upvoted</option>
-                            <option value="comments">Most Discussed</option>
+                            <option value="critical">Critical First</option>
                         </select>
-                        <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                        <ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
                     </div>
-
-                    {/* Filter toggle */}
                     <button
-                        onClick={() => setShowFilters(v => !v)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ${showFilters ? 'border-primary-green/40 bg-primary-light/50 text-primary-dark' : 'border-gray-200 text-text-secondary hover:bg-gray-100'}`}
+                        onClick={() => setShowFilters((prev) => !prev)}
+                        className="secondary-button inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
                     >
-                        <Filter size={15} />
+                        <SlidersHorizontal size={16} />
                         Filters
                     </button>
                 </div>
+            </section>
 
-                {/* Expandable filters */}
-                {showFilters && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                        {/* Status filter */}
-                        <div>
-                            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Status</p>
-                            <div className="flex flex-wrap gap-2">
-                                {(['all', 'pending', 'inprogress', 'resolved', 'rejected'] as StatusFilter[]).map(s => (
-                                    <button
-                                        key={s}
-                                        onClick={() => setStatusFilter(s)}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${statusFilter === s ? 'border-primary-green/40 bg-primary-light/50 text-primary-dark' : 'border-gray-200 text-text-muted hover:border-gray-300 hover:text-gray-900 hover:bg-gray-50'}`}
-                                    >
-                                        {s === 'all' ? 'All' : s === 'inprogress' ? 'In Progress' : s.charAt(0).toUpperCase() + s.slice(1)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+            <section className="flex gap-6">
+                <div className="min-w-0 flex-1 space-y-5">
+                    <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
+                        {(['all', 'road', 'water', 'light', 'waste', 'park', 'other'] as Category[]).map((category) => {
+                            const config = category === 'all' ? null : categoryConfig[category];
+                            return (
+                                <button
+                                    key={category}
+                                    onClick={() => setCategoryFilter(category)}
+                                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                                        categoryFilter === category
+                                            ? 'border-[var(--color-green-primary)] bg-[var(--color-green-primary)] text-white'
+                                            : 'border-black/10 bg-white text-[var(--color-text-secondary)] hover:border-[var(--color-green-primary)]'
+                                    }`}
+                                >
+                                    {config && <config.icon size={14} />}
+                                    <span>{category === 'all' ? 'All' : config?.label}</span>
+                                    <span className={`rounded-full px-2 py-0.5 text-xs ${categoryFilter === category ? 'bg-white/15' : 'bg-[var(--color-bg-card-alt)]'}`}>
+                                        {categoryCounts[category]}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
-                )}
-            </GlassCard>
 
-            {/* Category tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                {CATEGORY_TABS.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setCategoryFilter(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex-shrink-0 border
-                            ${categoryFilter === tab.id
-                                ? 'bg-primary-light border-primary-green/40 text-primary-dark shadow-[0_0_12px_rgba(34,197,94,0.1)]'
-                                : 'bg-white border-gray-200 text-text-muted hover:border-gray-300 hover:text-gray-900 shadow-sm'
-                            }`}
-                    >
-                        {tab.id !== 'all' && (
-                            <span className={categoryFilter === tab.id ? 'text-primary-green' : 'text-text-muted'}>
-                                {CATEGORY_META[tab.id]?.icon}
-                            </span>
-                        )}
-                        {tab.label}
-                        {tab.id === 'all' && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-md bg-gray-100 text-text-muted">{totalCounts.total}</span>
-                        )}
-                    </button>
-                ))}
-            </div>
-
-            {/* Issues list */}
-            {error ? (
-                <div className="flex flex-col items-center justify-center py-24 text-text-muted">
-                    <p className="text-lg font-medium text-gray-700">{error}</p>
-                    <p className="text-sm mt-1">Try refreshing the page.</p>
-                </div>
-            ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-24 text-text-muted">
-                    <p className="text-sm">Loading issues…</p>
-                </div>
-            ) : issues.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-24 text-text-muted">
-                    <Search size={40} className="mb-4 opacity-30 text-gray-500" />
-                    <p className="text-lg font-medium text-gray-700">No issues found</p>
-                    <p className="text-sm mt-1">Try adjusting your search or filters.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    {issues.map(issue => {
-                        const cat = CATEGORY_META[issue.category];
-                        const sev = SEVERITY_CONFIG[issue.severity];
-                        return (
-                            <GlassCard key={issue._id} hoverEffect className="p-5 flex flex-col gap-4">
-                                {/* Header */}
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${cat.bg} ${cat.color} border border-gray-200`}>
-                                            {cat.icon}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <h3 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">{issue.title}</h3>
-                                            <div className="flex items-center gap-1.5 text-xs text-text-muted mt-0.5">
-                                                <MapPin size={11} />
-                                                <span className="truncate">{issue.addressLabel}</span>
-                                                <span className="text-gray-300">·</span>
-                                                <span className="flex-shrink-0">{timeAgo(issue.createdAt)}</span>
+                    {loading ? (
+                        <div className="app-card flex h-52 items-center justify-center p-6 text-sm text-[var(--color-text-muted)]">Loading issues...</div>
+                    ) : visibleIssues.length === 0 ? (
+                        <div className="app-card flex min-h-[320px] flex-col items-center justify-center p-8 text-center">
+                            <div className="icon-chip h-20 w-20 bg-[var(--color-green-pale)] text-[var(--color-green-primary)]">
+                                <AlertTriangle size={34} />
+                            </div>
+                            <h2 className="mt-5 text-2xl font-bold">No issues found</h2>
+                            <p className="mt-2 max-w-md text-sm text-[var(--color-text-secondary)]">
+                                Try adjusting your filters or report a new issue to start your city response queue.
+                            </p>
+                            <button className="primary-button mt-6 px-5 py-3 text-sm font-semibold">+ Report Issue</button>
+                        </div>
+                    ) : (
+                        <div className="grid gap-4 xl:grid-cols-2">
+                            {visibleIssues.map((issue) => {
+                                const category = categoryConfig[issue.category];
+                                const Icon = category.icon;
+                                const progress = issue.status === 'inprogress' ? Math.min(95, 35 + issue.commentCount * 8 + issue.upvoteCount * 4) : 0;
+                                return (
+                                    <article key={issue._id} className="app-card p-5" style={{ borderLeft: `4px solid ${category.color}` }}>
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex min-w-0 gap-4">
+                                                <div className="icon-chip h-10 w-10 flex-shrink-0" style={{ background: category.bg, color: category.color }}>
+                                                    <Icon size={18} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h3 className="text-base font-bold leading-6">{issue.title}</h3>
+                                                    <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
+                                                        <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {issue.addressLabel}</span>
+                                                        <span>{timeAgo(issue.createdAt)}</span>
+                                                    </div>
+                                                </div>
                                             </div>
+                                            <button className="rounded-full p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-card-alt)]">⋯</button>
                                         </div>
-                                    </div>
-                                    <button className="text-text-muted hover:text-gray-900 p-1 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0">
-                                        <MoreHorizontal size={17} />
-                                    </button>
-                                </div>
 
-                                <div className="h-px bg-gray-100" />
-
-                                {/* Description */}
-                                <p className="text-sm text-text-secondary line-clamp-2 leading-relaxed">
-                                    {issue.description}
-                                </p>
-
-                                <div className="h-px bg-gray-100" />
-
-                                {/* Footer */}
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2">
-                                        <StatusBadge status={issue.status} />
-                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-gray-200 bg-gray-50 text-xs ${sev.color}`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${sev.dot}`} />
-                                            {sev.label}
+                                        <div className="my-4 h-px bg-black/5" />
+                                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                                            <span className={`pill-badge ${statusStyle[issue.status as Exclude<StatusFilter, 'all'>] || 'bg-[#fef2f2] text-[#dc2626]'}`}>{issue.status === 'inprogress' ? 'In Progress' : issue.status}</span>
+                                            <span className={`pill-badge ${severityStyle[issue.severity]}`}>{issue.severity}</span>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex items-center gap-1 text-xs text-text-muted">
-                                            <ThumbsUp size={13} /> {issue.upvoteCount}
-                                        </span>
-                                        <span className="flex items-center gap-1 text-xs text-text-muted">
-                                            <MessageCircle size={13} /> {issue.commentCount}
-                                        </span>
-                                        <button
-                                            onClick={() => navigate(`/issues/${issue._id}`)}
-                                            className="flex items-center gap-1.5 text-xs font-medium text-primary-green hover:text-accent-lime transition-colors ml-1"
-                                        >
-                                            View <ArrowRight size={13} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </GlassCard>
-                        );
-                    })}
+
+                                        <div className="mt-4 flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-4 text-sm text-[var(--color-text-secondary)]">
+                                                <span className="inline-flex items-center gap-1.5"><ThumbsUp size={15} /> {issue.upvoteCount}</span>
+                                                <span className="inline-flex items-center gap-1.5"><MessageCircle size={15} /> {issue.commentCount}</span>
+                                            </div>
+                                            <button onClick={() => navigate(`/issues/${issue._id}`)} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-green-primary)]">
+                                                View <ArrowRight size={14} />
+                                            </button>
+                                        </div>
+
+                                        {issue.status === 'inprogress' && (
+                                            <div className="mt-4">
+                                                <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                                                    <span>Completion</span>
+                                                    <span>{progress}%</span>
+                                                </div>
+                                                <div className="h-2 rounded-full bg-[#e5e7eb]">
+                                                    <div className="h-full rounded-full bg-[#3b82f6]" style={{ width: `${progress}%` }} />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
-            )}
+
+                {showFilters && (
+                    <aside className="app-card hidden w-[320px] flex-shrink-0 p-5 xl:block">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-lg font-bold">Filters</p>
+                                <p className="text-sm text-[var(--color-text-muted)]">Fine-tune the active issue list.</p>
+                            </div>
+                            <button onClick={() => setShowFilters(false)} className="text-[var(--color-text-muted)]">✕</button>
+                        </div>
+
+                        <div className="mt-5 space-y-5">
+                            <div>
+                                <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">Status</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {(['all', 'pending', 'inprogress', 'resolved'] as StatusFilter[]).map((status) => (
+                                        <button
+                                            key={status}
+                                            onClick={() => setStatusFilter(status)}
+                                            className={`rounded-full px-3 py-2 text-xs font-semibold transition ${
+                                                statusFilter === status ? 'bg-[var(--color-green-primary)] text-white' : 'bg-[var(--color-bg-card-alt)] text-[var(--color-text-secondary)]'
+                                            }`}
+                                        >
+                                            {status === 'inprogress' ? 'In Progress' : status}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">Severity</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {(['low', 'medium', 'high', 'critical'] as Severity[]).map((severity) => (
+                                        <button
+                                            key={severity}
+                                            onClick={() => toggleSeverity(severity)}
+                                            className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold transition ${
+                                                selectedSeverities.includes(severity)
+                                                    ? `border-transparent ${severityStyle[severity]}`
+                                                    : 'border-black/10 bg-white text-[var(--color-text-secondary)]'
+                                            }`}
+                                        >
+                                            {severity}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">Date Range</p>
+                                <button className="secondary-button inline-flex w-full items-center justify-between px-4 py-3 text-sm font-semibold">
+                                    <span className="inline-flex items-center gap-2">
+                                        <CalendarRange size={15} />
+                                        Last 30 days
+                                    </span>
+                                    <ChevronDown size={15} />
+                                </button>
+                            </div>
+
+                            <button className="primary-button w-full px-4 py-3 text-sm font-semibold">Apply Filters</button>
+                            <button
+                                onClick={() => {
+                                    setStatusFilter('all');
+                                    setSelectedSeverities([]);
+                                    setCategoryFilter('all');
+                                }}
+                                className="w-full text-sm font-semibold text-[var(--color-green-primary)]"
+                            >
+                                Reset
+                            </button>
+                        </div>
+                    </aside>
+                )}
+            </section>
         </div>
     );
 };

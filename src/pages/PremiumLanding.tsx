@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { PremiumButton } from '../components/ui/PremiumButton';
 import { PremiumGlassCard } from '../components/ui/PremiumGlassCard';
-import { PremiumStatCard } from '../components/ui/PremiumStatCard';
+// removed PremiumStatCard
 
 /* ── Premium Floating nav ── */
 const PremiumLandingNav: React.FC<{ onEnter: () => void }> = ({ onEnter }) => {

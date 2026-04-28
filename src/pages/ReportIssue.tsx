@@ -1,601 +1,634 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { GlassCard } from '../components/ui/GlassCard';
 import {
-    MapPin, Image as ImageIcon, Camera, Check, ChevronRight, ChevronLeft,
-    FileText, AlertTriangle, Upload, Flag,
-    Construction, Droplets, Lightbulb, Trash2, Trees, HelpCircle
+    AlertTriangle,
+    Camera,
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    Construction,
+    Droplets,
+    FileText,
+    Flag,
+    HelpCircle,
+    Lightbulb,
+    MapPin,
+    Trash2,
+    Trees,
+    Upload,
 } from 'lucide-react';
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import * as L from 'leaflet';
 import { useNavigate } from 'react-router-dom';
 import { apiCreateIssue, apiUploadImages } from '../lib/api';
 
-const CATEGORIES = [
-    { id: 'road', icon: <Construction size={22} />, label: 'Roads & Traffic', desc: 'Potholes, cracks, signs' },
-    { id: 'water', icon: <Droplets size={22} />, label: 'Water & Plumbing', desc: 'Leaks, drainage' },
-    { id: 'light', icon: <Lightbulb size={22} />, label: 'Streetlights', desc: 'Outages, flickering' },
-    { id: 'waste', icon: <Trash2 size={22} />, label: 'Waste Management', desc: 'Illegal dumping, bins' },
-    { id: 'park', icon: <Trees size={22} />, label: 'Parks & Trees', desc: 'Fallen trees, damage' },
-    { id: 'other', icon: <HelpCircle size={22} />, label: 'Other', desc: 'Any other issue' },
+const categories = [
+    { id: 'road', icon: Construction, label: 'Roads & Traffic', desc: 'Potholes, cracks, signs', color: '#f97316', bg: '#fff1e8' },
+    { id: 'water', icon: Droplets, label: 'Water & Plumbing', desc: 'Leaks, drainage', color: '#3b82f6', bg: '#eff6ff' },
+    { id: 'light', icon: Lightbulb, label: 'Streetlights', desc: 'Outages, poles, wiring', color: '#f59e0b', bg: '#fff8e1' },
+    { id: 'waste', icon: Trash2, label: 'Waste Management', desc: 'Illegal dumping, bins', color: '#ef4444', bg: '#fef2f2' },
+    { id: 'park', icon: Trees, label: 'Parks & Trees', desc: 'Fallen trees, damage', color: '#22c55e', bg: '#f0fdf4' },
+    { id: 'other', icon: HelpCircle, label: 'Other', desc: 'Anything else', color: '#9ca3af', bg: '#f3f4f6' },
 ];
 
-const SEVERITY_LEVELS = [
-    { id: 'low', label: 'Low', color: 'text-blue-600', border: 'border-blue-200', bg: 'bg-blue-50', activeBg: 'bg-blue-100', glow: 'shadow-[0_0_12px_rgba(59,130,246,0.2)]', dot: 'bg-blue-500', desc: 'Minor inconvenience' },
-    { id: 'medium', label: 'Medium', color: 'text-yellow-600', border: 'border-yellow-200', bg: 'bg-yellow-50', activeBg: 'bg-yellow-100', glow: 'shadow-[0_0_12px_rgba(250,204,21,0.2)]', dot: 'bg-yellow-500', desc: 'Needs attention soon' },
-    { id: 'high', label: 'High', color: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50', activeBg: 'bg-orange-100', glow: 'shadow-[0_0_12px_rgba(251,146,60,0.2)]', dot: 'bg-orange-500', desc: 'Urgent fix needed' },
-    { id: 'critical', label: 'Critical', color: 'text-red-600', border: 'border-red-200', bg: 'bg-red-50', activeBg: 'bg-red-100', glow: 'shadow-[0_0_12px_rgba(248,113,113,0.2)]', dot: 'bg-red-500', desc: 'Immediate danger' },
+const severityLevels = [
+    { id: 'low', label: 'Low', desc: 'Minor inconvenience', color: '#3b82f6', tint: '#eff6ff' },
+    { id: 'medium', label: 'Medium', desc: 'Needs attention soon', color: '#f59e0b', tint: '#fff8e1' },
+    { id: 'high', label: 'High', desc: 'Urgent fix needed', color: '#ea580c', tint: '#fff7ed' },
+    { id: 'critical', label: 'Critical', desc: 'Immediate danger', color: '#ef4444', tint: '#fef2f2' },
 ];
 
-const STEPS = [
-    { num: 1, label: 'Details', icon: <FileText size={16} /> },
-    { num: 2, label: 'Location', icon: <MapPin size={16} /> },
-    { num: 3, label: 'Photos', icon: <Camera size={16} /> },
-    { num: 4, label: 'Review', icon: <Check size={16} /> },
+const steps = [
+    { number: 1, label: 'Details', icon: FileText },
+    { number: 2, label: 'Location', icon: MapPin },
+    { number: 3, label: 'Photos', icon: Camera },
+    { number: 4, label: 'Review', icon: Check },
 ];
+
+function PinEvents(props: { onSelect: (lat: number, lng: number) => void }) {
+    useMapEvents({
+        click: (event) => props.onSelect(event.latlng.lat, event.latlng.lng),
+    });
+    return null;
+}
+
+function Recenter({ pin }: { pin: { lat: number; lng: number } | null }) {
+    const map = useMap();
+    useEffect(() => {
+        if (pin) map.setView([pin.lat, pin.lng], Math.max(map.getZoom(), 15));
+    }, [map, pin]);
+    return null;
+}
+
+const pinIcon = L.divIcon({
+    className: 'cr-report-marker',
+    html: '<div style="width:28px;height:28px;border-radius:999px;background:#2d7a4f;border:4px solid white;box-shadow:0 12px 24px rgba(45,122,79,0.35);"></div>',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+});
 
 export const ReportIssue: React.FC = () => {
     const [step, setStep] = useState(1);
-    const [selectedCat, setSelectedCat] = useState('');
-    const [severity, setSeverity] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [severity, setSeverity] = useState('medium');
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [addressLabel, setAddressLabel] = useState('');
+    const [landmark, setLandmark] = useState('');
     const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
     const [photos, setPhotos] = useState<File[]>([]);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [submitted, setSubmitted] = useState(false);
-    const [createdId, setCreatedId] = useState<string | null>(null);
-    const totalSteps = 4;
-
+    const [submittedId, setSubmittedId] = useState<string | null>(null);
+    const fileRef = useRef<HTMLInputElement | null>(null);
     const navigate = useNavigate();
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    const selectedCatData = CATEGORIES.find(c => c.id === selectedCat);
-    const selectedSeverityData = SEVERITY_LEVELS.find(s => s.id === severity);
-
-    const effectiveAddress = addressLabel || (pin ? `${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}` : '');
-
-    const canContinue = useMemo(() => {
-        if (step === 1) return title.trim().length > 0 && !!selectedCat;
-        if (step === 2) return !!pin;
-        if (step === 3) return true;
-        if (step === 4) return title.trim().length > 0 && !!selectedCat && !!pin;
-        return true;
-    }, [step, title, selectedCat, pin]);
-
-    useEffect(() => {
-        if (step !== 2) return;
-        if (pin) return;
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                setPin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-            },
-            () => {}
-        );
-    }, [step, pin]);
-
-    function pickFiles() {
-        fileInputRef.current?.click();
-    }
-
-    function onFilesSelected(filesList: FileList | null) {
-        if (!filesList) return;
-        const next = [...photos];
-        for (const f of Array.from(filesList)) {
-            if (next.length >= 3) break;
-            next.push(f);
-        }
-        setPhotos(next);
-    }
-
-    const photoPreviews = useMemo(() => {
-        const urls = photos.map((f) => URL.createObjectURL(f));
-        return urls;
-    }, [photos]);
+    const charCount = description.length;
+    const totalSteps = 4;
+    const selectedCategoryData = categories.find((item) => item.id === selectedCategory);
+    const selectedSeverity = severityLevels.find((item) => item.id === severity);
+    const effectiveAddress = addressLabel || (pin ? `${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}` : '');
+    const progressPercent = (step / totalSteps) * 100;
+    const currentStepMeta = steps[step - 1];
+    const quickStats = [
+        { label: 'Review SLA', value: '24 hrs', tone: 'text-[var(--color-green-primary)]' },
+        { label: 'Reward', value: '50 pts', tone: 'text-[#c97a11]' },
+        { label: 'Photos', value: `${photos.length}/5`, tone: 'text-[#3b82f6]' },
+    ];
 
     useEffect(() => {
         return () => {
-            for (const u of photoPreviews) URL.revokeObjectURL(u);
+            photos.forEach((file) => URL.revokeObjectURL((file as File & { preview?: string }).preview || ''));
         };
-    }, [photoPreviews]);
+    }, [photos]);
+
+    const previews = useMemo(() => photos.map((file) => ({ file, url: URL.createObjectURL(file) })), [photos]);
+
+    const canContinue = useMemo(() => {
+        if (step === 1) return title.trim().length > 0 && selectedCategory.length > 0;
+        if (step === 2) return !!pin;
+        if (step === 3) return true;
+        return !!pin && title.trim().length > 0 && selectedCategory.length > 0;
+    }, [step, title, selectedCategory, pin]);
+
+    const resetForm = () => {
+        setStep(1);
+        setSelectedCategory('');
+        setSeverity('medium');
+        setTitle('');
+        setDescription('');
+        setAddressLabel('');
+        setLandmark('');
+        setPin(null);
+        setPhotos([]);
+        setSubmitError(null);
+        setSubmittedId(null);
+    };
+
+    const handleFiles = (list: FileList | null) => {
+        if (!list) return;
+        const next = [...photos];
+        for (const file of Array.from(list)) {
+            if (next.length >= 5) break;
+            next.push(file);
+        }
+        setPhotos(next.slice(0, 5));
+    };
+
+    const removePhoto = (index: number) => {
+        setPhotos((prev) => prev.filter((_, current) => current !== index));
+    };
 
     const handleSubmit = async () => {
-        setSubmitError(null);
         setSubmitting(true);
+        setSubmitError(null);
         try {
-            const sev = (severity || 'medium') as any;
-            if (!title.trim()) throw new Error('Title is required');
-            if (!selectedCat) throw new Error('Category is required');
-            if (!pin) throw new Error('Location pin is required');
-
-            const urls = photos.length > 0 ? (await apiUploadImages(photos)).urls : [];
+            if (!pin) throw new Error('Please add a location pin.');
+            const upload = photos.length > 0 ? await apiUploadImages(photos) : { urls: [] };
             const res = await apiCreateIssue({
                 title: title.trim(),
                 description: description.trim(),
-                category: selectedCat as any,
-                severity: sev,
+                category: selectedCategory as any,
+                severity: severity as any,
                 addressLabel: effectiveAddress || 'Pinned location',
                 lat: pin.lat,
                 lng: pin.lng,
-                photoUrls: urls,
+                photoUrls: upload.urls,
             });
-
-            setCreatedId(res.issue._id);
-            setSubmitted(true);
-        } catch (e: any) {
-            setSubmitError(e?.message || 'Failed to submit');
+            setSubmittedId(res.issue._id);
+        } catch (error: any) {
+            setSubmitError(error?.message || 'Failed to submit');
         } finally {
             setSubmitting(false);
         }
     };
 
-    if (submitted) {
+    if (submittedId) {
         return (
-            <div className="max-w-2xl mx-auto pb-10 flex items-center justify-center min-h-[60vh]">
-                <GlassCard elevated className="p-12 text-center w-full">
-                    <div className="relative w-24 h-24 mx-auto mb-6">
-                        <div className="absolute inset-0 bg-primary-green/20 rounded-full animate-ping" />
-                        <div className="relative w-24 h-24 rounded-full bg-primary-green/20 border-2 border-primary-green flex items-center justify-center shadow-[0_0_40px_rgba(34,197,94,0.4)]">
-                            <Check size={44} className="text-primary-green" strokeWidth={2.5} />
+            <div className="mx-auto max-w-3xl">
+                <div className="app-card overflow-hidden p-0 text-center">
+                    <div className="bg-gradient-to-br from-[#0f2318] via-[#18412b] to-[#236a40] px-10 py-12 text-white">
+                        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white/10 text-white shadow-[0_20px_45px_rgba(10,26,18,0.28)] backdrop-blur">
+                            <Check size={40} />
+                        </div>
+                        <h1 className="mt-6 text-3xl font-extrabold text-white">Report Submitted</h1>
+                        <p className="mt-3 text-sm text-white/75">
+                            Your report is now in the queue and will be reviewed within 24 hours.
+                        </p>
+                    </div>
+                    <div className="px-10 py-8">
+                        <div className="mx-auto inline-flex rounded-full bg-[var(--color-green-pale)] px-4 py-2 text-sm font-semibold text-[var(--color-green-primary)]">
+                            Report ID: {submittedId}
+                        </div>
+                        <div className="mt-8 grid gap-3 text-left sm:grid-cols-3">
+                            {[
+                                { label: 'Status', value: 'Under Review' },
+                                { label: 'Estimated Response', value: 'Within 24 hrs' },
+                                { label: 'Reward Pending', value: '50 civic points' },
+                            ].map((item) => (
+                                <div key={item.label} className="rounded-2xl border border-black/5 bg-[var(--color-bg-card-alt)] p-4">
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">{item.label}</p>
+                                    <p className="mt-2 text-sm font-semibold">{item.value}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-8 flex flex-wrap justify-center gap-3">
+                            <button onClick={resetForm} className="secondary-button px-5 py-3 text-sm font-semibold">Report Another</button>
+                            <button onClick={() => navigate('/dashboard')} className="primary-button px-5 py-3 text-sm font-semibold">View Dashboard</button>
                         </div>
                     </div>
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">Report Submitted!</h2>
-                    <p className="text-text-muted mb-6">Your issue has been logged. Our team will review it shortly and you'll be notified of updates.</p>
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-green/10 border border-primary-green/30 rounded-full text-primary-green text-sm font-mono mb-8">
-                        <span className="w-2 h-2 bg-primary-green rounded-full animate-pulse" />
-                        Report ID: {createdId || '—'}
-                    </div>
-                    <div className="flex gap-3 justify-center">
-                        <button
-                            onClick={() => {
-                                setSubmitted(false);
-                                setCreatedId(null);
-                                setStep(1);
-                                setTitle('');
-                                setDescription('');
-                                setSelectedCat('');
-                                setSeverity('');
-                                setAddressLabel('');
-                                setPin(null);
-                                setPhotos([]);
-                            }}
-                            className="px-6 py-2.5 rounded-xl border border-gray-200 text-text-secondary hover:bg-gray-50 transition-colors font-medium"
-                        >
-                            Report Another
-                        </button>
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="px-6 py-2.5 rounded-xl bg-primary-green text-background font-semibold hover:bg-accent-lime transition-colors"
-                        >
-                            View Dashboard
-                        </button>
-                    </div>
-                </GlassCard>
+                </div>
             </div>
         );
     }
 
-    function PinEvents() {
-        useMapEvents({
-            click: (e: L.LeafletMouseEvent) => {
-                setPin({ lat: e.latlng.lat, lng: e.latlng.lng });
-                if (!addressLabel) {
-                    setAddressLabel(`${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`);
-                }
-            },
-        });
-        return null;
-    }
-
-    function RecenterOnPin(props: { pin: { lat: number; lng: number } | null }) {
-        const map = useMap();
-
-        useEffect(() => {
-            if (!props.pin) return;
-            map.setView([props.pin.lat, props.pin.lng], Math.max(map.getZoom(), 16));
-        }, [map, props.pin?.lat, props.pin?.lng]);
-
-        return null;
-    }
-
-    const pinIcon = L.divIcon({
-        className: 'cr-report-pin',
-        html: '<div class="w-10 h-10 rounded-full bg-primary-green/20 border-2 border-primary-green flex items-center justify-center shadow-[0_0_24px_rgba(34,197,94,0.35)]"><div class="w-3 h-3 rounded-full bg-primary-green"></div></div>',
-        iconSize: [40, 40],
-        iconAnchor: [20, 40],
-    });
-
     return (
-        <div className="max-w-3xl mx-auto pb-12">
-            {/* Header */}
-            <header className="mb-10">
-                <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary-green/15 border border-primary-green/30 flex items-center justify-center">
-                        <Flag size={18} className="text-primary-green" />
+        <div className="relative mx-auto max-w-6xl space-y-6 pb-8">
+            <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 rounded-[36px] bg-[radial-gradient(circle_at_top_left,rgba(76,175,125,0.22),transparent_42%),radial-gradient(circle_at_top_right,rgba(45,122,79,0.14),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.6),transparent)]" />
+
+            <section className="app-card overflow-hidden p-0">
+                <div className="grid gap-0 lg:grid-cols-[1.3fr_0.7fr]">
+                    <div className="relative overflow-hidden px-6 py-7 md:px-8">
+                        <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-[rgba(168,230,192,0.28)] blur-3xl" />
+                        <div className="absolute bottom-0 left-10 h-24 w-24 rounded-full bg-[rgba(59,130,246,0.10)] blur-2xl" />
+                        <div className="relative">
+                            <div className="inline-flex items-center gap-3 rounded-full border border-[rgba(45,122,79,0.12)] bg-[var(--color-green-pale)]/80 px-3 py-2 text-xs font-semibold text-[var(--color-green-primary)]">
+                                <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-green-light)] animate-live-dot" />
+                                Citizen Reporting
+                            </div>
+                            <div className="mt-5 flex items-start gap-4">
+                                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--color-green-primary)] to-[#49a16f] text-white shadow-[0_18px_40px_rgba(45,122,79,0.22)]">
+                                    <Flag size={24} />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">Report an Issue</h1>
+                                    <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)] md:text-base">
+                                        Turn a civic problem into action fast. Add the issue details, pin the location, attach photos, and send a clean report to the right team.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                                {quickStats.map((item) => (
+                                    <div key={item.label} className="rounded-2xl border border-black/5 bg-white/75 p-4 backdrop-blur-sm">
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">{item.label}</p>
+                                        <p className={`mt-2 text-lg font-extrabold ${item.tone}`}>{item.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Report an Issue</h1>
-                        <p className="text-text-muted text-sm">Help improve your city — reports are reviewed within 24 hours.</p>
+
+                    <div className="border-t border-black/5 bg-[linear-gradient(180deg,#f8fcf8_0%,#eef7f0_100%)] px-6 py-7 lg:border-l lg:border-t-0">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-green-primary)]">Ready To Submit</p>
+                        <h2 className="mt-3 text-xl font-extrabold">Clean, structured reports get faster action.</h2>
+                        <div className="mt-5 space-y-3">
+                            {[
+                                { label: 'Required details', done: title.trim().length > 0 && selectedCategory.length > 0 },
+                                { label: 'Location pinned', done: !!pin },
+                                { label: 'Evidence photos', done: photos.length > 0 },
+                            ].map((item) => (
+                                <div key={item.label} className="flex items-center justify-between rounded-2xl border border-black/5 bg-white px-4 py-3">
+                                    <span className="text-sm font-medium">{item.label}</span>
+                                    <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-bold ${item.done ? 'bg-[var(--color-green-pale)] text-[var(--color-green-primary)]' : 'bg-[var(--color-bg-card-alt)] text-[var(--color-text-muted)]'}`}>
+                                        {item.done ? 'Done' : 'Pending'}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-5 rounded-2xl border border-[rgba(45,122,79,0.1)] bg-white/80 p-4">
+                            <p className="text-sm font-semibold text-[var(--color-green-primary)]">Earn 50 points for each verified report</p>
+                            <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
+                                Clear titles, exact locations, and a couple of photos help the operations team verify your issue much faster.
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </header>
+            </section>
 
-            {/* Step Indicator */}
-            <div className="mb-8">
-                <div className="flex items-center">
-                    {STEPS.map((s, i) => (
-                        <React.Fragment key={s.num}>
-                            <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm transition-all duration-300 border
-                                    ${s.num < step
-                                        ? 'bg-primary-green border-primary-green text-background'
-                                        : s.num === step
-                                        ? 'bg-primary-green/15 border-primary-green text-primary-green shadow-[0_0_16px_rgba(34,197,94,0.15)]'
-                                        : 'bg-gray-50 border-gray-200 text-gray-400'
+            <section className="app-card overflow-hidden p-0">
+                <div className="bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,246,0.92))] px-6 py-5 md:px-8">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <p className="section-kicker">Progress Flow</p>
+                            <h2 className="mt-2 text-2xl font-extrabold">Complete your report in four guided steps</h2>
+                            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">You&apos;re on step {step}. We&apos;ll keep everything organized and review-ready.</p>
+                        </div>
+                        <div className="rounded-2xl border border-black/5 bg-white px-4 py-3 shadow-sm">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">Completion</p>
+                            <p className="mt-1 text-lg font-extrabold text-[var(--color-green-primary)]">{Math.round(progressPercent)}%</p>
+                        </div>
+                    </div>
+                    <div className="mt-5 h-3 overflow-hidden rounded-full bg-[#dbe7dd]">
+                        <div className="h-full rounded-full bg-gradient-to-r from-[var(--color-green-primary)] via-[var(--color-green-light)] to-[#9bd3b3]" style={{ width: `${progressPercent}%` }} />
+                    </div>
+                    <div className="mt-6 grid gap-3 md:grid-cols-4">
+                        {steps.map((item) => {
+                            const Icon = item.icon;
+                            const active = item.number === step;
+                            const complete = item.number < step;
+                            return (
+                                <div
+                                    key={item.number}
+                                    className={`rounded-3xl border p-4 transition ${
+                                        active
+                                            ? 'border-[rgba(45,122,79,0.16)] bg-[linear-gradient(180deg,#ffffff_0%,#ecf7ef_100%)] shadow-[0_18px_40px_rgba(45,122,79,0.12)]'
+                                            : complete
+                                              ? 'border-[rgba(76,175,125,0.22)] bg-[var(--color-green-pale)]/85'
+                                              : 'border-black/5 bg-white'
                                     }`}
                                 >
-                                    {s.num < step ? <Check size={16} strokeWidth={2.5} /> : s.icon}
-                                </div>
-                                <span className={`text-[11px] font-medium tracking-wide ${s.num <= step ? 'text-primary-green' : 'text-gray-400'}`}>
-                                    {s.label}
-                                </span>
-                            </div>
-                            {i < STEPS.length - 1 && (
-                                <div className="flex-1 mx-2 mb-4">
-                                    <div className="h-px w-full bg-gray-200 relative overflow-hidden rounded-full">
-                                        <div
-                                            className="absolute inset-y-0 left-0 bg-primary-green transition-all duration-500 rounded-full"
-                                            style={{ width: step > s.num ? '100%' : '0%' }}
-                                        />
+                                    <div className="flex items-center justify-between">
+                                        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+                                            complete
+                                                ? 'bg-[var(--color-green-light)] text-white'
+                                                : active
+                                                  ? 'bg-[var(--color-green-primary)] text-white'
+                                                  : 'bg-[var(--color-bg-card-alt)] text-[var(--color-text-muted)]'
+                                        }`}>
+                                            {complete ? <Check size={18} /> : <Icon size={18} />}
+                                        </div>
+                                        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">Step {item.number}</span>
                                     </div>
+                                    <p className="mt-4 text-base font-bold">{item.label}</p>
+                                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                                        {complete ? 'Completed and ready' : active ? 'Currently in focus' : 'Coming next'}
+                                    </p>
                                 </div>
-                            )}
-                        </React.Fragment>
-                    ))}
-                </div>
-            </div>
-
-            {/* Card */}
-            <GlassCard elevated className="overflow-hidden">
-                {/* Step label bar */}
-                <div className="px-8 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
-                    <div>
-                        <p className="text-xs text-text-muted font-mono uppercase tracking-widest">Step {step} of {totalSteps}</p>
-                        <h2 className="text-lg font-semibold text-gray-900 mt-0.5">
-                            {step === 1 && 'Issue Details'}
-                            {step === 2 && 'Pin Location'}
-                            {step === 3 && 'Attach Photos'}
-                            {step === 4 && 'Review & Submit'}
-                        </h2>
+                            );
+                        })}
                     </div>
-                    <div className="w-9 h-9 rounded-lg bg-primary-green/10 border border-primary-green/20 flex items-center justify-center text-primary-green">
-                        {STEPS[step - 1].icon}
+                </div>
+            </section>
+
+            <section className="app-card overflow-hidden">
+                <div className="border-b border-black/5 bg-[linear-gradient(180deg,#ffffff_0%,#f7fbf8_100%)] px-8 py-6">
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="section-kicker">Step {step} of {totalSteps}</p>
+                            <h2 className="mt-2 text-2xl font-bold">
+                                {step === 1 && 'Issue Details'}
+                                {step === 2 && 'Location'}
+                                {step === 3 && 'Photos'}
+                                {step === 4 && 'Review'}
+                            </h2>
+                            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+                                {step === 1 && 'Add a strong title, category, severity, and enough context for quick triage.'}
+                                {step === 2 && 'Pin the issue precisely and add any address or landmark details.'}
+                                {step === 3 && 'Photos give the city team visual proof and help speed up verification.'}
+                                {step === 4 && 'Review everything before sending your report to the operations queue.'}
+                            </p>
+                        </div>
+                        <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-[linear-gradient(180deg,#eef7f1_0%,#dff1e6_100%)] text-[var(--color-green-primary)] shadow-sm">
+                            {React.createElement(currentStepMeta.icon, { size: 22 })}
+                        </div>
                     </div>
                 </div>
 
                 <div className="p-8">
-                    {/* ── Step 1: Details ── */}
                     {step === 1 && (
-                        <div className="space-y-7 animate-in fade-in slide-in-from-right-4 duration-300">
-                            {/* Title */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-text-secondary">
-                                    Issue Title <span className="text-red-400">*</span>
-                                </label>
+                        <div className="space-y-7">
+                            <div>
+                                <label className="mb-2 block text-sm font-bold">Issue Title <span className="text-red-500">*</span></label>
                                 <input
-                                    type="text"
                                     value={title}
-                                    onChange={e => setTitle(e.target.value)}
+                                    onChange={(event) => setTitle(event.target.value)}
                                     placeholder="e.g., Deep pothole on Main Street near junction"
-                                    className="w-full px-4 py-3 text-sm rounded-xl"
+                                    className="w-full rounded-2xl border border-black/8 bg-white px-4 py-3.5 text-base shadow-[inset_0_1px_1px_rgba(17,24,39,0.02)]"
                                 />
-                                <p className="text-xs text-text-muted">Be specific — include street name and landmarks.</p>
+                                <p className="mt-2 text-xs text-[var(--color-text-muted)]">Be specific and include the street name, direction, or nearby point of reference.</p>
                             </div>
 
-                            {/* Category */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-text-secondary">
-                                    Category <span className="text-red-400">*</span>
-                                </label>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {CATEGORIES.map(cat => (
-                                        <button
-                                            key={cat.id}
-                                            onClick={() => setSelectedCat(cat.id)}
-                                            className={`relative p-4 rounded-xl border text-left flex flex-col gap-2 transition-all duration-200 group
-                                                ${selectedCat === cat.id
-                                                    ? 'border-primary-green bg-primary-green/10 shadow-[0_0_18px_rgba(34,197,94,0.15)]'
-                                                    : 'border-gray-200 bg-gray-50 hover:border-primary-green/40 hover:bg-gray-100'
+                            <div>
+                                <label className="mb-3 block text-sm font-bold">Category</label>
+                                <div className="grid gap-3 md:grid-cols-3">
+                                    {categories.map((category) => {
+                                        const Icon = category.icon;
+                                        const active = selectedCategory === category.id;
+                                        return (
+                                            <button
+                                                key={category.id}
+                                                onClick={() => setSelectedCategory(category.id)}
+                                                className={`relative overflow-hidden rounded-[22px] border px-4 py-5 text-left transition-all ${
+                                                    active
+                                                        ? 'border-[rgba(45,122,79,0.18)] bg-[linear-gradient(180deg,#ffffff_0%,#ebf7ef_100%)] shadow-[0_18px_40px_rgba(45,122,79,0.12)]'
+                                                        : 'border-[#e5e7eb] bg-white hover:-translate-y-0.5 hover:border-[rgba(45,122,79,0.24)] hover:shadow-[0_16px_34px_rgba(15,35,24,0.08)]'
                                                 }`}
+                                            >
+                                                <span className={`absolute inset-x-0 top-0 h-1 ${active ? 'bg-[var(--color-green-primary)]' : 'bg-transparent'}`} />
+                                                {active && (
+                                                    <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-green-primary)] text-white shadow-sm">
+                                                        <Check size={12} />
+                                                    </span>
+                                                )}
+                                                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style={{ background: category.bg, color: category.color }}>
+                                                    <Icon size={20} />
+                                                </div>
+                                                <p className="text-base font-bold">{category.label}</p>
+                                                <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{category.desc}</p>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="mb-3 block text-sm font-bold">Severity Level</label>
+                                <div className="grid gap-3 md:grid-cols-4">
+                                    {severityLevels.map((item) => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setSeverity(item.id)}
+                                            className={`rounded-[22px] border px-4 py-4 text-center transition-all ${
+                                                severity === item.id ? 'shadow-[0_16px_34px_rgba(15,35,24,0.08)]' : 'border-[#e5e7eb] bg-white hover:-translate-y-0.5'
+                                            }`}
+                                            style={severity === item.id ? { background: `linear-gradient(180deg, #ffffff 0%, ${item.tint} 100%)`, borderColor: item.color } : undefined}
                                         >
-                                            {selectedCat === cat.id && (
-                                                <span className="absolute top-2.5 right-2.5 w-4 h-4 bg-primary-green rounded-full flex items-center justify-center">
-                                                    <Check size={10} strokeWidth={3} className="text-background" />
-                                                </span>
-                                            )}
-                                            <span className={`${selectedCat === cat.id ? 'text-primary-green' : 'text-text-muted'} transition-colors`}>{cat.icon}</span>
-                                            <div>
-                                                <p className={`text-sm font-semibold ${selectedCat === cat.id ? 'text-gray-900' : 'text-text-secondary'}`}>{cat.label}</p>
-                                                <p className="text-xs text-text-muted mt-0.5">{cat.desc}</p>
-                                            </div>
+                                            <span className="mx-auto mb-3 block h-3 w-3 rounded-full shadow-sm" style={{ background: item.color }} />
+                                            <p className="text-sm font-bold">{item.label}</p>
+                                            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">{item.desc}</p>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* Severity */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-text-secondary">Severity Level</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    {SEVERITY_LEVELS.map(sv => (
-                                        <button
-                                            key={sv.id}
-                                            onClick={() => setSeverity(sv.id)}
-                                            className={`px-3 py-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all duration-200
-                                                ${severity === sv.id
-                                                    ? `${sv.border} ${sv.activeBg} ${sv.glow}`
-                                                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                                                }`}
-                                        >
-                                            <span className={`w-2.5 h-2.5 rounded-full ${sv.dot}`} />
-                                            <span className={`text-xs font-semibold ${severity === sv.id ? sv.color : 'text-text-muted'}`}>{sv.label}</span>
-                                            <span className="text-[10px] text-text-muted text-center leading-tight">{sv.desc}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Description */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-text-secondary">Description</label>
+                            <div>
+                                <label className="mb-2 block text-sm font-bold">Description</label>
                                 <textarea
-                                    rows={4}
+                                    rows={5}
                                     value={description}
-                                    onChange={e => setDescription(e.target.value)}
-                                    placeholder="Describe the issue in detail — when it started, how it affects you, any hazards..."
-                                    className="w-full px-4 py-3 text-sm rounded-xl resize-none"
+                                    onChange={(event) => setDescription(event.target.value.slice(0, 500))}
+                                    placeholder="Describe the issue in detail."
+                                    className="w-full resize-none rounded-2xl border border-black/8 bg-white px-4 py-3.5"
                                 />
-                                <p className="text-xs text-text-muted text-right">{description.length}/500</p>
+                                <p className={`mt-2 text-right text-xs ${charCount >= 480 ? 'text-red-500' : charCount >= 400 ? 'text-amber-500' : 'text-[var(--color-text-muted)]'}`}>
+                                    {charCount}/500
+                                </p>
                             </div>
                         </div>
                     )}
 
-                    {/* ── Step 2: Location ── */}
                     {step === 2 && (
-                        <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-text-secondary">Street Address</label>
-                                <div className="relative">
-                                    <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" />
-                                    <input
-                                        type="text"
-                                        value={addressLabel}
-                                        onChange={e => setAddressLabel(e.target.value)}
-                                        placeholder="Search or enter address..."
-                                        className="w-full pl-10 pr-4 py-3 text-sm rounded-xl"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Map */}
-                            <div className="relative rounded-xl overflow-hidden border border-gray-200 h-[340px] hover:border-primary-green/40 transition-colors">
-                                <MapContainer
-                                    center={[pin?.lat || 28.6139, pin?.lng || 77.209]}
-                                    zoom={14}
-                                    className="w-full h-full"
-                                >
-                                    <TileLayer
-                                        attribution='&copy; OpenStreetMap contributors'
-                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    />
-                                    <RecenterOnPin pin={pin} />
-                                    <PinEvents />
-                                    {pin && (
-                                        <Marker
-                                            position={[pin.lat, pin.lng]}
-                                            icon={pinIcon}
-                                            draggable
-                                            eventHandlers={{
-                                                dragend: (e: L.LeafletEvent) => {
-                                                    const ll = (e.target as any).getLatLng();
-                                                    setPin({ lat: ll.lat, lng: ll.lng });
-                                                    if (!addressLabel) setAddressLabel(`${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`);
-                                                },
+                        <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+                            <div className="space-y-5">
+                                <div className="h-[360px] overflow-hidden rounded-[24px] border border-black/10 shadow-[0_18px_40px_rgba(15,35,24,0.08)]">
+                                    <MapContainer center={[pin?.lat || 28.6139, pin?.lng || 77.209]} zoom={13} className="h-full w-full">
+                                        <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                        <PinEvents
+                                            onSelect={(lat, lng) => {
+                                                setPin({ lat, lng });
+                                                if (!addressLabel) setAddressLabel(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
                                             }}
                                         />
-                                    )}
-                                </MapContainer>
+                                        <Recenter pin={pin} />
+                                        {pin && <Marker position={[pin.lat, pin.lng]} icon={pinIcon} />}
+                                    </MapContainer>
+                                </div>
 
-                                {!pin && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-                                        <div className="px-4 py-2 bg-white/90 shadow-sm backdrop-blur-md rounded-full border border-gray-200">
-                                            <p className="text-sm font-medium text-gray-900">Click map to drop pin</p>
-                                        </div>
+                                <div className="flex flex-wrap gap-3">
+                                    <button
+                                        onClick={() => {
+                                            if (!navigator.geolocation) return;
+                                            navigator.geolocation.getCurrentPosition((position) => {
+                                                setPin({ lat: position.coords.latitude, lng: position.coords.longitude });
+                                                setAddressLabel(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+                                            });
+                                        }}
+                                        className="secondary-button px-4 py-3 text-sm font-semibold"
+                                    >
+                                        Use My Location
+                                    </button>
+                                    <div className="rounded-full bg-[var(--color-green-pale)] px-4 py-3 text-sm font-semibold text-[var(--color-green-primary)]">
+                                        Pin: {pin?.lat.toFixed(4) || '--'}, {pin?.lng.toFixed(4) || '--'}
                                     </div>
-                                )}
+                                </div>
                             </div>
 
-                            <div className="flex items-start gap-2 p-3 bg-primary-green/5 border border-primary-green/15 rounded-xl">
-                                <AlertTriangle size={14} className="text-primary-green mt-0.5 flex-shrink-0" />
-                                <p className="text-xs text-text-muted">Your precise location helps our team reach the issue faster. You can drag the pin to adjust.</p>
+                            <div className="space-y-4">
+                                <div className="rounded-[24px] border border-[rgba(45,122,79,0.12)] bg-[linear-gradient(180deg,#ffffff_0%,#f4faf6_100%)] p-5">
+                                    <p className="section-kicker">Pinning Tips</p>
+                                    <h3 className="mt-2 text-lg font-extrabold">Drop the marker exactly where the issue is.</h3>
+                                    <div className="mt-4 space-y-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+                                        <p>Use the map click or your current location to give the maintenance team a precise spot.</p>
+                                        <p>Landmarks help field staff identify the issue faster once they reach the area.</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
+                                    <div>
+                                        <label className="mb-2 block text-sm font-bold">Address</label>
+                                        <input value={addressLabel} onChange={(event) => setAddressLabel(event.target.value)} className="w-full rounded-2xl px-4 py-3.5" placeholder="Street or address" />
+                                    </div>
+                                    <div>
+                                        <label className="mb-2 block text-sm font-bold">Nearest Landmark</label>
+                                        <input value={landmark} onChange={(event) => setLandmark(event.target.value)} className="w-full rounded-2xl px-4 py-3.5" placeholder="Optional landmark" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* ── Step 3: Photos ── */}
                     {step === 3 && (
-                        <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div className="space-y-5">
                             <input
-                                ref={fileInputRef}
+                                ref={fileRef}
                                 type="file"
                                 accept="image/*"
                                 multiple
                                 className="hidden"
-                                onChange={(e) => {
-                                    onFilesSelected(e.target.files);
-                                    e.currentTarget.value = '';
+                                onChange={(event) => {
+                                    handleFiles(event.target.files);
+                                    event.currentTarget.value = '';
                                 }}
                             />
-
-                            <div
-                                onClick={pickFiles}
-                                className="border-2 border-dashed border-gray-200 hover:border-primary-green/40 rounded-xl p-12 flex flex-col items-center text-center cursor-pointer transition-all duration-200 bg-gray-50 hover:bg-primary-green/[0.03] group"
+                            <button
+                                onClick={() => fileRef.current?.click()}
+                                className="relative flex h-[240px] w-full flex-col items-center justify-center overflow-hidden rounded-[26px] border-2 border-dashed border-[#cfdad1] bg-[linear-gradient(180deg,#ffffff_0%,#f4faf6_100%)] text-center transition hover:border-[var(--color-green-primary)] hover:bg-[var(--color-green-pale)]"
                             >
-                                <div className="w-16 h-16 rounded-2xl bg-white group-hover:bg-primary-green/15 border border-gray-200 group-hover:border-primary-green/30 flex items-center justify-center mb-4 transition-all shadow-sm">
-                                    <Upload size={26} className="text-text-muted group-hover:text-primary-green transition-colors" />
+                                <div className="absolute left-1/2 top-6 h-24 w-24 -translate-x-1/2 rounded-full bg-[rgba(168,230,192,0.3)] blur-2xl" />
+                                <div className="relative flex h-16 w-16 items-center justify-center rounded-3xl bg-white shadow-[0_18px_40px_rgba(45,122,79,0.12)]">
+                                    <Camera size={34} className="text-[var(--color-green-primary)]" />
                                 </div>
-                                <h3 className="text-base font-semibold text-gray-900 mb-1">Drop photos here</h3>
-                                <p className="text-sm text-text-muted mb-5">PNG, JPG, HEIC up to 10MB each &mdash; max 3 photos</p>
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            pickFiles();
-                                        }}
-                                        className="flex items-center gap-2 px-5 py-2.5 bg-primary-green/15 hover:bg-primary-green/25 border border-primary-green/30 rounded-xl text-primary-green text-sm font-medium transition-colors"
-                                    >
-                                        <ImageIcon size={16} /> Browse Files
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            pickFiles();
-                                        }}
-                                        className="flex items-center gap-2 px-5 py-2.5 bg-white shadow-sm hover:bg-gray-50 border border-gray-200 rounded-xl text-text-secondary text-sm font-medium transition-colors"
-                                    >
-                                        <Camera size={16} /> Use Camera
-                                    </button>
+                                <p className="relative mt-5 text-lg font-extrabold">Drop photos here or click to upload</p>
+                                <p className="relative mt-2 text-sm text-[var(--color-text-muted)]">Supports JPG, PNG, HEIC up to 10MB</p>
+                                <div className="relative mt-5 inline-flex rounded-full border border-[rgba(45,122,79,0.18)] bg-white px-4 py-2 text-xs font-semibold text-[var(--color-green-primary)]">
+                                    Up to 5 images
                                 </div>
-                            </div>
+                            </button>
 
-                            {/* Photo slots */}
-                            <div className="grid grid-cols-3 gap-3">
-                                {[0, 1, 2].map(i => {
-                                    const preview = photoPreviews[i];
-                                    const file = photos[i];
-                                    return (
-                                        <button
-                                            type="button"
-                                            key={i}
-                                            onClick={pickFiles}
-                                            className="aspect-square rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 text-text-muted hover:border-gray-300 transition-colors cursor-pointer overflow-hidden relative"
-                                        >
-                                            {preview ? (
-                                                <>
-                                                    <img src={preview} alt={file?.name || `Photo ${i + 1}`} className="absolute inset-0 w-full h-full object-cover" />
-                                                    <div className="absolute inset-0 bg-black/10" />
-                                                    <div className="absolute bottom-2 left-2 right-2 text-[11px] text-white font-medium truncate">
-                                                        {file?.name}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
-                                                        <ImageIcon size={16} />
-                                                    </div>
-                                                    <span className="text-xs">Photo {i + 1}</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl">
-                                <AlertTriangle size={14} className="text-text-muted mt-0.5 flex-shrink-0" />
-                                <p className="text-xs text-text-muted">Photos are optional but greatly help our team assess the issue. Clear, well-lit photos speed up resolution.</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Step 4: Review ── */}
-                    {step === 4 && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                            <div className="flex items-center gap-4 p-5 bg-primary-green/8 border border-primary-green/20 rounded-xl">
-                                <div className="w-12 h-12 rounded-xl bg-primary-green/20 border border-primary-green/30 flex items-center justify-center flex-shrink-0">
-                                    <Check size={22} className="text-primary-green" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-gray-900">All set! Please review before submitting.</p>
-                                    <p className="text-xs text-text-muted mt-0.5">Once submitted, you'll receive a tracking ID and email updates.</p>
-                                </div>
-                            </div>
-
-                            <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
-                                {[
-                                    { label: 'Issue Title', value: title || 'Deep pothole on Main Street', mono: false },
-                                    { label: 'Category', value: selectedCatData ? selectedCatData.label : 'Roads & Traffic', mono: false },
-                                    { label: 'Severity', value: selectedSeverityData?.label || 'Medium', mono: false },
-                                    { label: 'Location', value: effectiveAddress || '—', mono: false },
-                                    { label: 'Photos', value: `${photos.length} attached`, mono: false },
-                                    { label: 'Submitted by', value: 'You (anonymous)', mono: false },
-                                ].map((row, i, arr) => (
-                                    <div key={row.label} className={`flex items-center justify-between px-5 py-3.5 ${i < arr.length - 1 ? 'border-b border-gray-100' : ''} ${i % 2 === 0 ? 'bg-gray-50/50' : ''}`}>
-                                        <span className="text-sm text-text-muted w-28 flex-shrink-0">{row.label}</span>
-                                        <span className="text-sm font-medium text-gray-900 text-right">{row.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {submitError && (
-                                <div className="flex items-start gap-2 p-3 bg-red-500/5 border border-red-500/15 rounded-xl">
-                                    <AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
-                                    <p className="text-xs text-text-muted">{submitError}</p>
+                            {previews.length > 0 && (
+                                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                                    {previews.map((preview, index) => (
+                                        <div key={preview.url} className="relative h-28 overflow-hidden rounded-[22px] border border-black/10 bg-white shadow-sm">
+                                            <img src={preview.url} alt={`Upload ${index + 1}`} className="h-full w-full object-cover" />
+                                            <button
+                                                onClick={() => removePhoto(index)}
+                                                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
+                                            >
+                                                x
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 
-                            <div className="flex items-center gap-3 p-3.5 bg-yellow-400/5 border border-yellow-400/15 rounded-xl">
-                                <AlertTriangle size={15} className="text-yellow-400 flex-shrink-0" />
-                                <p className="text-xs text-text-muted">By submitting, you confirm this report is accurate. False reports may result in account restrictions.</p>
+                            <div className="rounded-[22px] border border-black/5 bg-[var(--color-bg-card-alt)] px-4 py-4 text-sm leading-6 text-[var(--color-text-secondary)]">
+                                Max 5 photos. Clear, well-lit images from two angles make verification easier and reduce back-and-forth.
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 4 && (
+                        <div className="space-y-5">
+                            <div className="rounded-[26px] border border-[rgba(45,122,79,0.12)] bg-[linear-gradient(180deg,#ffffff_0%,#eef7f1_100%)] p-5">
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                    <div>
+                                        <p className="text-lg font-bold">{title || 'Untitled issue'}</p>
+                                        <p className="mt-2 text-sm text-[var(--color-text-secondary)]">{description || 'No description added yet.'}</p>
+                                    </div>
+                                    <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">Reward Preview</p>
+                                        <p className="mt-1 text-lg font-extrabold text-[var(--color-green-primary)]">+50 pts</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <span className="pill-badge bg-white text-[var(--color-green-primary)]">{selectedCategoryData?.label || 'No category'}</span>
+                                    <span className="pill-badge bg-white text-[var(--color-text-secondary)]">{selectedSeverity?.label || 'Medium'}</span>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+                                <div className="space-y-4">
+                                    <div className="rounded-[24px] border border-black/5 p-4">
+                                        <p className="text-sm font-bold">Location</p>
+                                        <p className="mt-2 text-sm text-[var(--color-text-secondary)]">{effectiveAddress || 'No address provided'}</p>
+                                        {landmark && <p className="mt-1 text-xs text-[var(--color-text-muted)]">Landmark: {landmark}</p>}
+                                        <div className="mt-4 h-[140px] overflow-hidden rounded-[22px] border border-black/10">
+                                            <MapContainer center={[pin?.lat || 28.6139, pin?.lng || 77.209]} zoom={15} className="h-full w-full" dragging={false} zoomControl={false} scrollWheelZoom={false} doubleClickZoom={false}>
+                                                <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                                {pin && <Marker position={[pin.lat, pin.lng]} icon={pinIcon} />}
+                                            </MapContainer>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-[24px] border border-black/5 p-4">
+                                        <p className="text-sm font-bold">Description</p>
+                                        <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
+                                            {description || 'No description added.'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="rounded-[24px] border border-black/5 p-4">
+                                        <p className="text-sm font-bold">Photos</p>
+                                        <div className="mt-3 grid grid-cols-3 gap-2">
+                                            {previews.length > 0 ? previews.map((preview) => (
+                                                <img key={preview.url} src={preview.url} alt="Preview" className="h-20 w-full rounded-2xl object-cover" />
+                                            )) : <p className="col-span-3 text-sm text-[var(--color-text-muted)]">No photos attached</p>}
+                                        </div>
+                                    </div>
+                                    <div className="rounded-[24px] border border-black/5 bg-[var(--color-bg-card-alt)] p-4">
+                                        <p className="text-sm font-bold">Rewards Preview</p>
+                                        <p className="mt-2 text-sm text-[var(--color-green-primary)]">You&apos;ll earn 50 pts for this report</p>
+                                    </div>
+                                    {submitError && (
+                                        <div className="rounded-2xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm text-[#dc2626]">
+                                            {submitError}
+                                        </div>
+                                    )}
+                                    <div className="rounded-[24px] border border-[#fde68a] bg-[#fffbeb] px-4 py-3 text-sm text-[#92400e]">
+                                        <span className="inline-flex items-center gap-2"><AlertTriangle size={15} /> Please confirm the report is accurate before submitting.</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Navigation */}
-                <div className="px-8 py-5 border-t border-gray-100 flex items-center justify-between gap-4 bg-white">
+                <div className="flex items-center justify-between border-t border-black/5 bg-[linear-gradient(180deg,#ffffff_0%,#f9fbf9_100%)] px-8 py-5">
                     <button
-                        onClick={() => setStep(s => Math.max(1, s - 1))}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
-                            ${step === 1
-                                ? 'opacity-0 pointer-events-none'
-                                : 'text-text-secondary hover:text-gray-900 border border-gray-200 hover:bg-gray-50'
-                            }`}
+                        onClick={() => setStep((current) => Math.max(1, current - 1))}
+                        className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-semibold ${step === 1 ? 'invisible' : 'secondary-button'}`}
                     >
-                        <ChevronLeft size={16} /> Back
+                        <ChevronLeft size={16} />
+                        Back
                     </button>
 
-                    <div className="flex items-center gap-1.5">
-                        {STEPS.map(s => (
-                            <div key={s.num} className={`h-1.5 rounded-full transition-all duration-300 ${s.num === step ? 'w-6 bg-primary-green' : s.num < step ? 'w-3 bg-primary-green/50' : 'w-3 bg-gray-200'}`} />
-                        ))}
-                    </div>
-
                     <button
-                        onClick={
-                            step === totalSteps
-                                ? handleSubmit
-                                : () => {
-                                      if (step === 1 && !severity) setSeverity('medium');
-                                      setStep((s) => Math.min(totalSteps, s + 1));
-                                  }
-                        }
+                        onClick={() => {
+                            if (step === totalSteps) {
+                                void handleSubmit();
+                            } else {
+                                setStep((current) => Math.min(totalSteps, current + 1));
+                            }
+                        }}
                         disabled={!canContinue || submitting}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200
-                            ${step === totalSteps
-                                ? 'bg-primary-green text-white hover:bg-accent-lime shadow-[0_4px_12px_rgba(34,197,94,0.35)] hover:shadow-[0_4px_16px_rgba(34,197,94,0.5)]'
-                                : 'bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-900'
-                            }`}
+                        className={`inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold ${step === totalSteps ? 'primary-button' : 'secondary-button'} ${!canContinue || submitting ? 'cursor-not-allowed opacity-60' : ''}`}
                     >
-                        {submitting ? 'Submitting…' : step === totalSteps ? 'Submit Report' : 'Continue'}
-                        {step === totalSteps ? <Check size={16} strokeWidth={2.5} /> : <ChevronRight size={16} />}
+                        {submitting ? 'Submitting...' : step === totalSteps ? 'Submit Report' : 'Continue'}
+                        {step === totalSteps ? <Upload size={16} /> : <ChevronRight size={16} />}
                     </button>
                 </div>
-            </GlassCard>
+            </section>
         </div>
     );
 };

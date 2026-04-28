@@ -16,7 +16,7 @@ export const PremiumButton: React.FC<PremiumButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClasses = 'font-semibold rounded-xl transition-all duration-300 relative overflow-hidden';
+  const baseClasses = 'inline-flex items-center justify-center gap-2 whitespace-nowrap font-semibold rounded-xl transition-all duration-300 relative overflow-hidden [&_svg]:shrink-0';
 
   const sizeClasses = {
     sm: 'px-4 py-2 text-sm',

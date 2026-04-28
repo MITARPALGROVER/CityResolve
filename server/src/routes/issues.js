@@ -46,6 +46,7 @@ issuesRouter.post('/', requireAuth, async (req, res, next) => {
       location: { type: 'Point', coordinates: [data.lng, data.lat] },
       photoUrls: data.photoUrls,
       status: 'pending',
+      progressPercent: 15,
     });
 
     await ActivityEvent.create({
@@ -233,6 +234,7 @@ issuesRouter.get('/:id', requireAuth, async (req, res, next) => {
 const patchIssueSchema = z.object({
   status: z.enum(['pending', 'inprogress', 'resolved', 'rejected']).optional(),
   assignedDepartment: z.string().max(120).optional(),
+  progressPercent: z.number().min(0).max(100).optional(),
 });
 
 issuesRouter.patch('/:id', requireAuth, requireRole('admin'), async (req, res, next) => {
@@ -250,6 +252,14 @@ issuesRouter.patch('/:id', requireAuth, requireRole('admin'), async (req, res, n
 
     if (typeof parsed.data.status !== 'undefined') prev.status = parsed.data.status;
     if (typeof parsed.data.assignedDepartment !== 'undefined') prev.assignedDepartment = parsed.data.assignedDepartment;
+    if (typeof parsed.data.progressPercent !== 'undefined') prev.progressPercent = parsed.data.progressPercent;
+
+    if (typeof parsed.data.status !== 'undefined' && typeof parsed.data.progressPercent === 'undefined') {
+      if (parsed.data.status === 'pending') prev.progressPercent = Math.max(prev.progressPercent || 0, 15);
+      if (parsed.data.status === 'inprogress') prev.progressPercent = Math.max(prev.progressPercent || 0, 55);
+      if (parsed.data.status === 'resolved') prev.progressPercent = 100;
+      if (parsed.data.status === 'rejected') prev.progressPercent = 0;
+    }
 
     await prev.save();
 

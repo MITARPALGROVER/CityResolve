@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './Layout';
-import { Landing } from './pages/Landing';
+import { PremiumLanding } from './pages/PremiumLanding';
 import { Dashboard } from './pages/Dashboard';
 import { ReportIssue } from './pages/ReportIssue';
 import { OpenIssues } from './pages/OpenIssues';
@@ -17,7 +17,7 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<Landing />} />
+                <Route path="/" element={<PremiumLanding />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
 
